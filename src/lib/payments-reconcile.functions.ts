@@ -77,6 +77,7 @@ export const reconcilePayment = createServerFn({ method: "POST" })
       .update({ processed: true, error: null })
       .eq("id", lastEvent.id);
 
+    await runAlertCheck(data.paymentId);
     return { ok: true, message: "Paiement réconcilié." };
   });
 
@@ -129,5 +130,6 @@ export const refundPayment = createServerFn({ method: "POST" })
       .eq("id", data.paymentId);
     if (error) throw new Error(error.message);
 
+    await runAlertCheck(data.paymentId);
     return { ok: true, refundedAmount: totalRefunded };
   });
