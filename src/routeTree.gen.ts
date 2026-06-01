@@ -17,6 +17,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VehiclesIdRouteImport } from './routes/vehicles.$id'
+import { Route as AdminAlertsRouteImport } from './routes/admin.alerts'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments.webhook'
 
 const SellRoute = SellRouteImport.update({
@@ -59,6 +60,11 @@ const VehiclesIdRoute = VehiclesIdRouteImport.update({
   path: '/vehicles/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAlertsRoute = AdminAlertsRouteImport.update({
+  id: '/alerts',
+  path: '/alerts',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -68,35 +74,38 @@ const ApiPublicPaymentsWebhookRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
   '/sell': typeof SellRoute
+  '/admin/alerts': typeof AdminAlertsRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
   '/sell': typeof SellRoute
+  '/admin/alerts': typeof AdminAlertsRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
   '/sell': typeof SellRoute
+  '/admin/alerts': typeof AdminAlertsRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/favorites'
     | '/sell'
+    | '/admin/alerts'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/favorites'
     | '/sell'
+    | '/admin/alerts'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
   id:
@@ -132,13 +143,14 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/favorites'
     | '/sell'
+    | '/admin/alerts'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
   DashboardRoute: typeof DashboardRoute
@@ -206,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VehiclesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/alerts': {
+      id: '/admin/alerts'
+      path: '/alerts'
+      fullPath: '/admin/alerts'
+      preLoaderRoute: typeof AdminAlertsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -216,9 +235,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminAlertsRoute: typeof AdminAlertsRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAlertsRoute: AdminAlertsRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
   DashboardRoute: DashboardRoute,

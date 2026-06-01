@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -566,6 +566,9 @@ function AlertsPanel() {
           </Select>
           <Button size="sm" onClick={runScan}>
             <RefreshCw className="h-4 w-4 mr-1.5" />Scanner
+          </Button>
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/admin/alerts">Triage avancé</Link>
           </Button>
         </div>
       </CardHeader>
