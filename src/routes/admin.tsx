@@ -86,17 +86,19 @@ function AdminPage() {
       <AdminStats />
 
       <Tabs defaultValue="users" className="mt-8">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 max-w-2xl">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 max-w-3xl">
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Utilisateurs</TabsTrigger>
           <TabsTrigger value="vehicles"><Car className="h-4 w-4 mr-1.5" />Annonces</TabsTrigger>
           <TabsTrigger value="payments"><CreditCard className="h-4 w-4 mr-1.5" />Paiements</TabsTrigger>
           <TabsTrigger value="reports"><Flag className="h-4 w-4 mr-1.5" />Signalements</TabsTrigger>
+          <TabsTrigger value="alerts"><AlertTriangle className="h-4 w-4 mr-1.5" />Alertes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-6"><UsersPanel /></TabsContent>
         <TabsContent value="vehicles" className="mt-6"><VehiclesPanel /></TabsContent>
         <TabsContent value="payments" className="mt-6"><PaymentsPanel /></TabsContent>
         <TabsContent value="reports" className="mt-6"><ReportsPanel /></TabsContent>
+        <TabsContent value="alerts" className="mt-6"><AlertsPanel /></TabsContent>
       </Tabs>
     </div>
   );
