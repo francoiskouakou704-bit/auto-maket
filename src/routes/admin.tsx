@@ -570,6 +570,9 @@ function AlertsPanel() {
           <Button size="sm" variant="outline" asChild>
             <Link to="/admin/alerts">Triage avancé</Link>
           </Button>
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/admin/notifications">Mes notifications</Link>
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
