@@ -86,11 +86,17 @@ export type Database = {
           acknowledged_at: string | null
           acknowledged_by: string | null
           alert_type: string
+          assigned_at: string | null
+          assigned_to: string | null
           created_at: string
           details: Json | null
           id: string
           message: string
           payment_id: string | null
+          proof_payload: Json | null
+          proof_refund_ref: string | null
+          proof_screenshot_url: string | null
+          resolution_comment: string | null
           severity: string
           status: string
           updated_at: string
@@ -99,11 +105,17 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
           alert_type: string
+          assigned_at?: string | null
+          assigned_to?: string | null
           created_at?: string
           details?: Json | null
           id?: string
           message: string
           payment_id?: string | null
+          proof_payload?: Json | null
+          proof_refund_ref?: string | null
+          proof_screenshot_url?: string | null
+          resolution_comment?: string | null
           severity?: string
           status?: string
           updated_at?: string
@@ -112,11 +124,17 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
           alert_type?: string
+          assigned_at?: string | null
+          assigned_to?: string | null
           created_at?: string
           details?: Json | null
           id?: string
           message?: string
           payment_id?: string | null
+          proof_payload?: Json | null
+          proof_refund_ref?: string | null
+          proof_screenshot_url?: string | null
+          resolution_comment?: string | null
           severity?: string
           status?: string
           updated_at?: string
