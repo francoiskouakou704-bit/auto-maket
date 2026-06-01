@@ -1,4 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { notifyAlertEvent } from "./alert-notifications.server";
+
 
 export type PaymentRow = {
   id: string;
