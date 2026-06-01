@@ -17,6 +17,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VehiclesIdRouteImport } from './routes/vehicles.$id'
+import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminAlertsRouteImport } from './routes/admin.alerts'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments.webhook'
 
@@ -60,6 +61,11 @@ const VehiclesIdRoute = VehiclesIdRouteImport.update({
   path: '/vehicles/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAlertsRoute = AdminAlertsRouteImport.update({
   id: '/alerts',
   path: '/alerts',
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/favorites': typeof FavoritesRoute
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/favorites': typeof FavoritesRoute
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/favorites': typeof FavoritesRoute
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/favorites'
     | '/sell'
     | '/admin/alerts'
+    | '/admin/notifications'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/favorites'
     | '/sell'
     | '/admin/alerts'
+    | '/admin/notifications'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
   id:
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/favorites'
     | '/sell'
     | '/admin/alerts'
+    | '/admin/notifications'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
@@ -218,6 +230,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VehiclesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/notifications': {
+      id: '/admin/notifications'
+      path: '/notifications'
+      fullPath: '/admin/notifications'
+      preLoaderRoute: typeof AdminNotificationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/alerts': {
       id: '/admin/alerts'
       path: '/alerts'
@@ -237,10 +256,12 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminAlertsRoute: typeof AdminAlertsRoute
+  AdminNotificationsRoute: typeof AdminNotificationsRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAlertsRoute: AdminAlertsRoute,
+  AdminNotificationsRoute: AdminNotificationsRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
@@ -259,3 +280,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
