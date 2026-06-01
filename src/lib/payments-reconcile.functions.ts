@@ -45,15 +45,19 @@ export const reconcilePayment = createServerFn({ method: "POST" })
       return { ok: true, message: "Aucun événement, paiement marqué réconcilié." };
     }
 
-    const payload = lastEvent.payload as Record<string, unknown> | null;
-    const status = (payload && (payload as { status?: string }).status) ?? payment.status;
+    const payload = lastEvent.payload as { status?: string } | null;
+    const allowed = ["pending", "succeeded", "failed", "refunded"] as const;
+    const rawStatus = payload?.status;
+    const status = (allowed as readonly string[]).includes(rawStatus ?? "")
+      ? (rawStatus as (typeof allowed)[number])
+      : (payment.status as (typeof allowed)[number]);
 
     const { error } = await supabaseAdmin
       .from("payments")
       .update({
         status,
         reconciled_at: new Date().toISOString(),
-        raw_event: payload,
+        raw_event: lastEvent.payload,
       })
       .eq("id", data.paymentId);
     if (error) throw new Error(error.message);
