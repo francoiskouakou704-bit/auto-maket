@@ -113,7 +113,7 @@ export const resolveAlert = createServerFn({ method: "POST" })
       }
     }
 
-    const { error } = await supabaseAdmin
+    const { data: updated, error } = await supabaseAdmin
       .from("payment_alerts")
       .update({
         status: "resolved",
@@ -124,8 +124,24 @@ export const resolveAlert = createServerFn({ method: "POST" })
         proof_screenshot_url: data.screenshotUrl || null,
         proof_payload: (parsedPayload as never) ?? null,
       })
-      .eq("id", data.alertId);
+      .eq("id", data.alertId)
+      .select("id, payment_id, alert_type, severity, message")
+      .maybeSingle();
     if (error) throw new Error(error.message);
+
+    if (updated) {
+      void notifyAlertEvent({
+        type: "resolved",
+        alertId: updated.id,
+        alertType: updated.alert_type,
+        severity: updated.severity,
+        message: updated.message,
+        paymentId: updated.payment_id,
+        resolvedBy: context.userId,
+        comment: data.comment,
+        refundRef: data.refundRef ?? null,
+      });
+    }
     return { ok: true };
   });
 
