@@ -7,6 +7,7 @@ import {
   recordAlerts,
   type PaymentRow,
 } from "./payment-alerts.server";
+import { notifyAlertEvent } from "./alert-notifications.server";
 
 async function ensureAdmin(userId: string) {
   const { data } = await supabaseAdmin
