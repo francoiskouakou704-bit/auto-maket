@@ -81,15 +81,69 @@ export type Database = {
           },
         ]
       }
+      payment_events: {
+        Row: {
+          created_at: string
+          error: string | null
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json
+          payment_id: string | null
+          processed: boolean
+          provider: string
+          provider_ref: string | null
+          signature: string | null
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          event_id: string
+          event_type: string
+          id?: string
+          payload: Json
+          payment_id?: string | null
+          processed?: boolean
+          provider: string
+          provider_ref?: string | null
+          signature?: string | null
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          payment_id?: string | null
+          processed?: boolean
+          provider?: string
+          provider_ref?: string | null
+          signature?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
           created_at: string
           currency: string
           id: string
+          idempotency_key: string | null
           kind: Database["public"]["Enums"]["payment_kind"]
           provider: string | null
           provider_ref: string | null
+          raw_event: Json | null
+          reconciled_at: string | null
+          refunded_amount: number
           status: Database["public"]["Enums"]["payment_status"]
           updated_at: string
           user_id: string
@@ -100,9 +154,13 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          idempotency_key?: string | null
           kind?: Database["public"]["Enums"]["payment_kind"]
           provider?: string | null
           provider_ref?: string | null
+          raw_event?: Json | null
+          reconciled_at?: string | null
+          refunded_amount?: number
           status?: Database["public"]["Enums"]["payment_status"]
           updated_at?: string
           user_id: string
@@ -113,9 +171,13 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          idempotency_key?: string | null
           kind?: Database["public"]["Enums"]["payment_kind"]
           provider?: string | null
           provider_ref?: string | null
+          raw_event?: Json | null
+          reconciled_at?: string | null
+          refunded_amount?: number
           status?: Database["public"]["Enums"]["payment_status"]
           updated_at?: string
           user_id?: string
