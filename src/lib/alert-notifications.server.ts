@@ -64,57 +64,6 @@ function composeText(e: AlertEvent): { title: string; body: string; url: string 
   };
 }
 
-async function sendSlack(e: AlertEvent): Promise<{ sent: boolean; error?: string }> {
-  const lovableKey = process.env.LOVABLE_API_KEY;
-  const slackKey = process.env.SLACK_API_KEY;
-  const channel = process.env.SLACK_ALERT_CHANNEL;
-  if (!lovableKey || !slackKey || !channel) {
-    return { sent: false, error: "slack_not_configured" };
-  }
-  const { title, body, url } = composeText(e);
-  try {
-    const res = await fetch(
-      "https://connector-gateway.lovable.dev/slack/api/chat.postMessage",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json; charset=utf-8",
-          Authorization: `Bearer ${lovableKey}`,
-          "X-Connection-Api-Key": slackKey,
-        },
-        body: JSON.stringify({
-          channel,
-          text: `${title}\n${body}`,
-          blocks: [
-            { type: "header", text: { type: "plain_text", text: title } },
-            { type: "section", text: { type: "mrkdwn", text: "```" + body + "```" } },
-            {
-              type: "actions",
-              elements: [
-                {
-                  type: "button",
-                  text: { type: "plain_text", text: "Ouvrir le triage" },
-                  url,
-                  style: e.severity === "critical" ? "danger" : "primary",
-                },
-              ],
-            },
-          ],
-        }),
-      },
-    );
-    const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-    if (!res.ok || !json.ok) {
-      const err = json.error ?? `http_${res.status}`;
-      console.error("[alert-notify][slack] failed", err);
-      return { sent: false, error: err };
-    }
-    return { sent: true };
-  } catch (err) {
-    console.error("[alert-notify][slack] exception", err);
-    return { sent: false, error: err instanceof Error ? err.message : "unknown" };
-  }
-}
 
 type AdminPref = {
   user_id: string;
