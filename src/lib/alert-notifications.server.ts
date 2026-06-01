@@ -143,7 +143,10 @@ async function sendEmail(e: AlertEvent): Promise<{ sent: number; error?: string 
   let sent = 0;
   for (const to of recipients) {
     try {
-      const { error } = await supabaseAdmin.rpc("enqueue_email", {
+      const rpc = (supabaseAdmin as unknown as {
+        rpc: (name: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
+      }).rpc;
+      const { error } = await rpc("enqueue_email", {
         p_queue: "transactional_emails",
         p_payload: {
           template_name: "payment-alert",
@@ -152,7 +155,7 @@ async function sendEmail(e: AlertEvent): Promise<{ sent: number; error?: string 
           html,
           text: `${title}\n\n${body}`,
         },
-      } as never);
+      });
       if (error) {
         console.warn("[alert-notify][email] enqueue failed for", to, error.message);
         continue;
