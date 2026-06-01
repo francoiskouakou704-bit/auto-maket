@@ -7,6 +7,7 @@ import {
   recordAlerts,
   type PaymentRow,
 } from "./payment-alerts.server";
+import { notifyAlertEvent } from "./alert-notifications.server";
 
 async function ensureAdmin(userId: string) {
   const { data } = await supabaseAdmin
@@ -62,14 +63,28 @@ export const updateAlertStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.userId);
-    const { error } = await supabaseAdmin
+    const { data: updated, error } = await supabaseAdmin
       .from("payment_alerts")
       .update({
         status: data.status,
         acknowledged_by: data.status === "open" ? null : context.userId,
         acknowledged_at: data.status === "open" ? null : new Date().toISOString(),
       })
-      .eq("id", data.alertId);
+      .eq("id", data.alertId)
+      .select("id, payment_id, alert_type, severity, message, status")
+      .maybeSingle();
     if (error) throw new Error(error.message);
+
+    if (updated && data.status === "resolved") {
+      void notifyAlertEvent({
+        type: "resolved",
+        alertId: updated.id,
+        alertType: updated.alert_type,
+        severity: updated.severity,
+        message: updated.message,
+        paymentId: updated.payment_id,
+        resolvedBy: context.userId,
+      });
+    }
     return { ok: true };
   });

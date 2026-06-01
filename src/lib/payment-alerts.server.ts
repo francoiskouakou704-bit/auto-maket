@@ -1,4 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { notifyAlertEvent } from "./alert-notifications.server";
+
 
 export type PaymentRow = {
   id: string;
@@ -116,11 +118,27 @@ export async function recordAlerts(paymentId: string, issues: Inconsistency[]) {
     else console.info(label, i.details ?? "");
   }
 
-  const { error } = await supabaseAdmin.from("payment_alerts").insert(toInsert);
+  const { data: inserted, error } = await supabaseAdmin
+    .from("payment_alerts")
+    .insert(toInsert)
+    .select("id, payment_id, alert_type, severity, message");
   if (error) {
     console.error("[payment-alert] failed to insert alerts", error);
     return { inserted: 0, error: error.message };
   }
+
+  // Fire notifications (best-effort, never blocks)
+  for (const row of inserted ?? []) {
+    void notifyAlertEvent({
+      type: "created",
+      alertId: row.id,
+      alertType: row.alert_type,
+      severity: row.severity,
+      message: row.message,
+      paymentId: row.payment_id,
+    });
+  }
+
   return { inserted: toInsert.length };
 }
 
