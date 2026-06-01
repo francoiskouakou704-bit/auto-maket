@@ -64,6 +64,54 @@ function composeText(e: AlertEvent): { title: string; body: string; url: string 
   };
 }
 
+
+type AdminPref = {
+  user_id: string;
+  email_enabled: boolean;
+  slack_enabled: boolean;
+  severities: string[];
+  notify_on_resolved: boolean;
+  email_override: string | null;
+};
+
+async function loadAdminPreferences(): Promise<AdminPref[]> {
+  try {
+    const { data, error } = await (supabaseAdmin as unknown as {
+      from: (t: string) => {
+        select: (s: string) => Promise<{ data: AdminPref[] | null; error: { message: string } | null }>;
+      };
+    })
+      .from("admin_notification_preferences")
+      .select("user_id, email_enabled, slack_enabled, severities, notify_on_resolved, email_override");
+    if (error) {
+      console.warn("[alert-notify] prefs load failed", error.message);
+      return [];
+    }
+    return data ?? [];
+  } catch (err) {
+    console.warn("[alert-notify] prefs exception", err);
+    return [];
+  }
+}
+
+async function resolveAdminEmail(userId: string): Promise<string | null> {
+  try {
+    const auth = (supabaseAdmin as unknown as {
+      auth: { admin: { getUserById: (id: string) => Promise<{ data: { user: { email: string | null } | null } | null }> } };
+    }).auth;
+    const { data } = await auth.admin.getUserById(userId);
+    return data?.user?.email ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function prefMatches(p: AdminPref, e: AlertEvent): boolean {
+  if (e.type === "resolved" && !p.notify_on_resolved) return false;
+  if (e.type === "created" && !p.severities.includes(e.severity)) return false;
+  return true;
+}
+
 async function sendSlack(e: AlertEvent): Promise<{ sent: boolean; error?: string }> {
   const lovableKey = process.env.LOVABLE_API_KEY;
   const slackKey = process.env.SLACK_API_KEY;
@@ -116,15 +164,11 @@ async function sendSlack(e: AlertEvent): Promise<{ sent: boolean; error?: string
   }
 }
 
-async function sendEmail(e: AlertEvent): Promise<{ sent: number; error?: string }> {
-  const list = process.env.APP_ADMIN_EMAILS;
-  if (!list) return { sent: 0, error: "email_not_configured" };
-  const recipients = list
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+async function sendEmails(
+  e: AlertEvent,
+  recipients: string[],
+): Promise<{ sent: number; error?: string }> {
   if (recipients.length === 0) return { sent: 0, error: "no_recipients" };
-
   const { title, body, url } = composeText(e);
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a;">
@@ -138,8 +182,6 @@ async function sendEmail(e: AlertEvent): Promise<{ sent: number; error?: string 
     </div>
   `.trim();
 
-  // Best-effort enqueue via the Lovable email queue RPC.
-  // If email infra is not set up, the RPC won't exist and we silently skip.
   let sent = 0;
   for (const to of recipients) {
     try {
@@ -169,19 +211,43 @@ async function sendEmail(e: AlertEvent): Promise<{ sent: number; error?: string 
 }
 
 export async function notifyAlertEvent(e: AlertEvent) {
-  // Slack: only critical creations + all resolutions (per user preference)
-  const shouldSlack =
-    (e.type === "created" && e.severity === "critical") || e.type === "resolved";
-  const shouldEmail = shouldSlack; // mirror policy
+  const prefs = await loadAdminPreferences();
+  const matching = prefs.filter((p) => prefMatches(p, e));
+
+  // Slack fires once if any matching admin has slack_enabled.
+  // Fallback: if NO preferences exist at all, keep legacy behavior
+  // (critical creations + all resolutions) so the system still alerts.
+  const legacyFallback =
+    prefs.length === 0 &&
+    ((e.type === "created" && e.severity === "critical") || e.type === "resolved");
+
+  const shouldSlack = matching.some((p) => p.slack_enabled) || legacyFallback;
+
+  // Email recipients: per-admin opt-in
+  const emailRecipients: string[] = [];
+  for (const p of matching) {
+    if (!p.email_enabled) continue;
+    const addr = p.email_override ?? (await resolveAdminEmail(p.user_id));
+    if (addr) emailRecipients.push(addr);
+  }
+  if (legacyFallback && emailRecipients.length === 0) {
+    const fallback = (process.env.APP_ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    emailRecipients.push(...fallback);
+  }
 
   const [slack, email] = await Promise.all([
     shouldSlack ? sendSlack(e) : Promise.resolve({ sent: false }),
-    shouldEmail ? sendEmail(e) : Promise.resolve({ sent: 0 }),
+    emailRecipients.length > 0 ? sendEmails(e, emailRecipients) : Promise.resolve({ sent: 0 }),
   ]);
-  if (!("sent" in slack && slack.sent) && !("sent" in email && (email as { sent: number }).sent > 0)) {
+
+  if (!(slack as { sent: boolean }).sent && (email as { sent: number }).sent === 0) {
     console.info(
       `[alert-notify] event=${e.type} severity=${e.severity} alert=${e.alertId} — no channel delivered`,
     );
   }
-  return { slack, email };
+  return { slack, email, matchedAdmins: matching.length };
 }
+
