@@ -81,6 +81,48 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          kind: Database["public"]["Enums"]["payment_kind"]
+          provider: string | null
+          provider_ref: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+          user_id: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["payment_kind"]
+          provider?: string | null
+          provider_ref?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["payment_kind"]
+          provider?: string | null
+          provider_ref?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id?: string
+          vehicle_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           account_type: string
@@ -117,6 +159,48 @@ export type Database = {
           id?: string
           phone?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      reports: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          details: string | null
+          id: string
+          reason: Database["public"]["Enums"]["report_reason"]
+          reporter_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["report_status"]
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: Database["public"]["Enums"]["report_reason"]
+          reporter_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: Database["public"]["Enums"]["report_reason"]
+          reporter_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+          updated_at?: string
+          vehicle_id?: string
         }
         Relationships: []
       }
@@ -283,6 +367,16 @@ export type Database = {
     Enums: {
       app_role: "user" | "dealer" | "admin"
       fuel_type: "gasoline" | "diesel" | "electric" | "hybrid" | "lpg" | "other"
+      payment_kind: "boost" | "featured" | "subscription" | "other"
+      payment_status: "pending" | "succeeded" | "failed" | "refunded"
+      report_reason:
+        | "fraud"
+        | "duplicate"
+        | "inappropriate"
+        | "wrong_info"
+        | "sold"
+        | "other"
+      report_status: "pending" | "reviewing" | "resolved" | "dismissed"
       transmission_type: "manual" | "automatic" | "semi_automatic"
       vehicle_status: "draft" | "published" | "sold" | "archived"
     }
@@ -414,6 +508,17 @@ export const Constants = {
     Enums: {
       app_role: ["user", "dealer", "admin"],
       fuel_type: ["gasoline", "diesel", "electric", "hybrid", "lpg", "other"],
+      payment_kind: ["boost", "featured", "subscription", "other"],
+      payment_status: ["pending", "succeeded", "failed", "refunded"],
+      report_reason: [
+        "fraud",
+        "duplicate",
+        "inappropriate",
+        "wrong_info",
+        "sold",
+        "other",
+      ],
+      report_status: ["pending", "reviewing", "resolved", "dismissed"],
       transmission_type: ["manual", "automatic", "semi_automatic"],
       vehicle_status: ["draft", "published", "sold", "archived"],
     },
