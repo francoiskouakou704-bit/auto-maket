@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notification_preferences: {
+        Row: {
+          created_at: string
+          email_enabled: boolean
+          email_override: string | null
+          notify_on_resolved: boolean
+          severities: string[]
+          slack_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_enabled?: boolean
+          email_override?: string | null
+          notify_on_resolved?: boolean
+          severities?: string[]
+          slack_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_enabled?: boolean
+          email_override?: string | null
+          notify_on_resolved?: boolean
+          severities?: string[]
+          slack_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
