@@ -313,7 +313,7 @@ function TriageDialog({
   const [uploading, setUploading] = useState(false);
 
   // Reset when alert changes
-  useMemo(() => {
+  useEffect(() => {
     setComment(alert?.resolution_comment ?? "");
     setRefundRef(alert?.proof_refund_ref ?? "");
     setScreenshotUrl(alert?.proof_screenshot_url ?? "");
