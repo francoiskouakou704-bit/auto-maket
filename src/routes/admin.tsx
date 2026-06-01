@@ -567,6 +567,9 @@ function AlertsPanel() {
           <Button size="sm" onClick={runScan}>
             <RefreshCw className="h-4 w-4 mr-1.5" />Scanner
           </Button>
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/admin/alerts">Triage avancé</Link>
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
