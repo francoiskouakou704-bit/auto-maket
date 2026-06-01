@@ -2,6 +2,16 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { checkAndAlert, type PaymentRow } from "./payment-alerts.server";
+
+async function runAlertCheck(paymentId: string) {
+  const { data } = await supabaseAdmin
+    .from("payments")
+    .select("id, provider, provider_ref, status, amount, refunded_amount, currency, reconciled_at")
+    .eq("id", paymentId)
+    .single();
+  if (data) await checkAndAlert(data as PaymentRow);
+}
 
 /**
  * Admin reconciliation: re-applies the latest stored webhook event for a given
@@ -67,6 +77,7 @@ export const reconcilePayment = createServerFn({ method: "POST" })
       .update({ processed: true, error: null })
       .eq("id", lastEvent.id);
 
+    await runAlertCheck(data.paymentId);
     return { ok: true, message: "Paiement réconcilié." };
   });
 
@@ -119,5 +130,6 @@ export const refundPayment = createServerFn({ method: "POST" })
       .eq("id", data.paymentId);
     if (error) throw new Error(error.message);
 
+    await runAlertCheck(data.paymentId);
     return { ok: true, refundedAmount: totalRefunded };
   });

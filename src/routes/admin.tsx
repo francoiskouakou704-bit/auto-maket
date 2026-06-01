@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -12,7 +13,10 @@ import {
   Eye,
   CheckCircle2,
   XCircle,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
+import { scanPaymentAlerts, updateAlertStatus } from "@/lib/payment-alerts.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -82,17 +86,19 @@ function AdminPage() {
       <AdminStats />
 
       <Tabs defaultValue="users" className="mt-8">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 max-w-2xl">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 max-w-3xl">
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Utilisateurs</TabsTrigger>
           <TabsTrigger value="vehicles"><Car className="h-4 w-4 mr-1.5" />Annonces</TabsTrigger>
           <TabsTrigger value="payments"><CreditCard className="h-4 w-4 mr-1.5" />Paiements</TabsTrigger>
           <TabsTrigger value="reports"><Flag className="h-4 w-4 mr-1.5" />Signalements</TabsTrigger>
+          <TabsTrigger value="alerts"><AlertTriangle className="h-4 w-4 mr-1.5" />Alertes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-6"><UsersPanel /></TabsContent>
         <TabsContent value="vehicles" className="mt-6"><VehiclesPanel /></TabsContent>
         <TabsContent value="payments" className="mt-6"><PaymentsPanel /></TabsContent>
         <TabsContent value="reports" className="mt-6"><ReportsPanel /></TabsContent>
+        <TabsContent value="alerts" className="mt-6"><AlertsPanel /></TabsContent>
       </Tabs>
     </div>
   );
@@ -477,6 +483,139 @@ function ReportsPanel() {
                   )}
                   {r.status !== "dismissed" && (
                     <Button size="icon" variant="ghost" title="Rejeter" onClick={() => resolve(r.id, "dismissed")}>
+                      <XCircle className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AlertsPanel() {
+  const qc = useQueryClient();
+  const [filter, setFilter] = useState<string>("open");
+  const scanFn = useServerFn(scanPaymentAlerts);
+  const updateFn = useServerFn(updateAlertStatus);
+
+  const { data: alerts } = useQuery({
+    queryKey: ["admin-payment-alerts", filter],
+    queryFn: async () => {
+      let q = supabase
+        .from("payment_alerts")
+        .select("id,payment_id,alert_type,severity,message,details,status,created_at,acknowledged_at")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (filter !== "all") q = q.eq("status", filter);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  async function runScan() {
+    try {
+      const res = await scanFn();
+      toast.success(
+        `Scan terminé: ${res.scanned} paiements, ${res.issuesFound} incohérence(s), ${res.alertsCreated} nouvelle(s) alerte(s).`,
+      );
+      qc.invalidateQueries({ queryKey: ["admin-payment-alerts"] });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erreur scan");
+    }
+  }
+
+  async function setStatus(alertId: string, status: "acknowledged" | "resolved" | "open") {
+    try {
+      await updateFn({ data: { alertId, status } });
+      toast.success("Alerte mise à jour");
+      qc.invalidateQueries({ queryKey: ["admin-payment-alerts"] });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erreur mise à jour");
+    }
+  }
+
+  const sevColor: Record<string, string> = {
+    info: "bg-blue-500/15 text-blue-700",
+    warning: "bg-yellow-500/15 text-yellow-700",
+    critical: "bg-red-500/15 text-red-700",
+  };
+  const statusColor: Record<string, string> = {
+    open: "bg-red-500/15 text-red-700",
+    acknowledged: "bg-yellow-500/15 text-yellow-700",
+    resolved: "bg-green-500/15 text-green-700",
+  };
+
+  return (
+    <Card className="shadow-elegant">
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
+        <CardTitle>Alertes paiements ({alerts?.length ?? 0})</CardTitle>
+        <div className="flex items-center gap-2">
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes</SelectItem>
+              <SelectItem value="open">Ouvertes</SelectItem>
+              <SelectItem value="acknowledged">Prises en compte</SelectItem>
+              <SelectItem value="resolved">Résolues</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button size="sm" onClick={runScan}>
+            <RefreshCw className="h-4 w-4 mr-1.5" />Scanner
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Sévérité</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Message</TableHead>
+              <TableHead>Statut</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {alerts?.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  Aucune alerte. Lancez un scan pour vérifier l'intégrité des paiements.
+                </TableCell>
+              </TableRow>
+            )}
+            {alerts?.map((a) => (
+              <TableRow key={a.id}>
+                <TableCell className="text-sm whitespace-nowrap">
+                  {new Date(a.created_at).toLocaleString()}
+                </TableCell>
+                <TableCell><Badge className={sevColor[a.severity]}>{a.severity}</Badge></TableCell>
+                <TableCell className="font-mono text-xs">{a.alert_type}</TableCell>
+                <TableCell className="max-w-md">
+                  <div className="text-sm">{a.message}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Paiement: <a href="#" className="underline" onClick={(e) => { e.preventDefault(); navigator.clipboard.writeText(a.payment_id ?? ""); toast.success("ID copié"); }}>{a.payment_id?.slice(0, 8)}…</a>
+                  </div>
+                </TableCell>
+                <TableCell><Badge className={statusColor[a.status]}>{a.status}</Badge></TableCell>
+                <TableCell className="text-right space-x-1">
+                  {a.status !== "acknowledged" && a.status !== "resolved" && (
+                    <Button size="sm" variant="outline" onClick={() => setStatus(a.id, "acknowledged")}>
+                      Prendre en compte
+                    </Button>
+                  )}
+                  {a.status !== "resolved" && (
+                    <Button size="icon" variant="ghost" title="Résoudre" onClick={() => setStatus(a.id, "resolved")}>
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    </Button>
+                  )}
+                  {a.status !== "open" && (
+                    <Button size="icon" variant="ghost" title="Rouvrir" onClick={() => setStatus(a.id, "open")}>
                       <XCircle className="h-4 w-4 text-muted-foreground" />
                     </Button>
                   )}

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { checkAndAlert, type PaymentRow } from "@/lib/payment-alerts.server";
 
 /**
  * Unified payments webhook for Stripe and Mobile Money providers.
@@ -246,6 +247,16 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
             .from("payment_events")
             .update({ processed: true, payment_id: paymentId })
             .eq("id", eventRow.id);
+
+          // Detect inconsistencies & raise alerts (logs + payment_alerts row)
+          if (paymentId) {
+            const { data: refreshed } = await supabaseAdmin
+              .from("payments")
+              .select("id, provider, provider_ref, status, amount, refunded_amount, currency, reconciled_at")
+              .eq("id", paymentId)
+              .single();
+            if (refreshed) await checkAndAlert(refreshed as PaymentRow);
+          }
 
           return Response.json({ ok: true, payment_id: paymentId });
         } catch (err: unknown) {
