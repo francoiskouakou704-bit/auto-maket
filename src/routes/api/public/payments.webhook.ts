@@ -175,7 +175,7 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
               request.headers.get("stripe-signature") ??
               request.headers.get("x-webhook-signature") ??
               null,
-            payload: evt as Record<string, unknown>,
+            payload: evt as never,
             processed: false,
           })
           .select()
@@ -204,7 +204,7 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
 
           if (existing) {
             const patch: Record<string, unknown> = {
-              raw_event: evt as Record<string, unknown>,
+              raw_event: evt,
               reconciled_at: new Date().toISOString(),
             };
             if (norm.status) patch.status = norm.status;
@@ -213,7 +213,7 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
             }
             const { error: upErr } = await supabaseAdmin
               .from("payments")
-              .update(patch)
+              .update(patch as never)
               .eq("id", existing.id);
             if (upErr) throw upErr;
           } else if (norm.userId && norm.amount != null && norm.currency) {
@@ -223,14 +223,16 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
               .insert({
                 user_id: norm.userId,
                 vehicle_id: norm.vehicleId,
-                kind: (norm.kind as "boost" | "subscription" | "feature") ?? "boost",
+                kind: (["boost", "subscription", "featured", "other"].includes(norm.kind ?? "")
+                  ? (norm.kind as "boost" | "subscription" | "featured" | "other")
+                  : "boost"),
                 amount: norm.amount,
                 currency: norm.currency,
                 provider,
                 provider_ref: norm.providerRef,
                 status: norm.status ?? "pending",
                 refunded_amount: norm.refundedAmount ?? 0,
-                raw_event: evt as Record<string, unknown>,
+                raw_event: evt as never,
                 reconciled_at: new Date().toISOString(),
               })
               .select("id")
