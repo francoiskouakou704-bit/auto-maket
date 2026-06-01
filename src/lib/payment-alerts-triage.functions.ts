@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { notifyAlertEvent } from "./alert-notifications.server";
+
 
 async function ensureAdmin(userId: string) {
   const { data } = await supabaseAdmin
