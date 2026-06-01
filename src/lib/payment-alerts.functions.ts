@@ -24,7 +24,7 @@ async function ensureAdmin(userId: string) {
 export const scanPaymentAlerts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await ensureAdmin(null as never, context.userId);
+    await ensureAdmin(context.userId);
 
     const { data: payments, error } = await supabaseAdmin
       .from("payments")
@@ -61,7 +61,7 @@ export const updateAlertStatus = createServerFn({ method: "POST" })
       .parse(input)
   )
   .handler(async ({ data, context }) => {
-    await ensureAdmin(null as never, context.userId);
+    await ensureAdmin(context.userId);
     const { error } = await supabaseAdmin
       .from("payment_alerts")
       .update({
