@@ -1,13 +1,15 @@
 import { Link } from "@tanstack/react-router";
-import { Car, Heart, LayoutDashboard, LogOut, Menu, Plus, Search, Sparkles } from "lucide-react";
+import { Car, Heart, LayoutDashboard, LogOut, Menu, Plus, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
+import { useIsAdmin } from "@/lib/use-admin";
 
 export function Navbar() {
   const { user } = useAuth();
+  const { data: isAdmin } = useIsAdmin();
   const [open, setOpen] = useState(false);
 
   const navLinks = (
@@ -26,6 +28,11 @@ export function Navbar() {
           <Link to="/dashboard" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-smooth">
             <LayoutDashboard className="inline h-4 w-4 mr-1.5" />Tableau de bord
           </Link>
+          {isAdmin && (
+            <Link to="/admin" className="text-sm font-medium text-primary hover:opacity-80 transition-smooth">
+              <ShieldCheck className="inline h-4 w-4 mr-1.5" />Admin
+            </Link>
+          )}
         </>
       )}
     </>
