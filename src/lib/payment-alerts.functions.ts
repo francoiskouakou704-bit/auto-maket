@@ -8,8 +8,7 @@ import {
   type PaymentRow,
 } from "./payment-alerts.server";
 
-async function ensureAdmin(supabase: typeof import("@supabase/supabase-js"), userId: string) {
-  // Use admin client to bypass RLS for this check
+async function ensureAdmin(userId: string) {
   const { data } = await supabaseAdmin
     .from("user_roles")
     .select("role")
