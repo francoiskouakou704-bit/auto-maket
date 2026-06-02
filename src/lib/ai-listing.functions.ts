@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const ListingInput = z.object({
   brand: z.string().min(1).max(50),
@@ -14,6 +15,7 @@ const ListingInput = z.object({
 });
 
 export const generateListingAI = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => ListingInput.parse(d))
   .handler(async ({ data }) => {
     const key = process.env.LOVABLE_API_KEY;
