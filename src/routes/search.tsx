@@ -240,9 +240,9 @@ function AiAssistant({
             <Loader2 className="h-4 w-4 animate-spin" /> En attente des résultats web…
           </div>
         )}
-        {messages.map((m) => {
+        {(messages as UIMessage[]).map((m) => {
           const text = m.parts
-            .map((p) => (p.type === "text" ? p.text : ""))
+            .map((p) => (p.type === "text" ? (p as { text: string }).text : ""))
             .join("");
           if (m.role === "user") {
             return (
