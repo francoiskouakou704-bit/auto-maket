@@ -12,7 +12,7 @@ import {
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 const NONCE_RE = /^[A-Za-z0-9_-]{16,128}$/;
-const RATE_LIMIT_PER_MIN = 10;
+const DEFAULT_RATE_LIMIT_PER_MIN = 10;
 
 const Schema = z.object({
   format: z.enum(["pdf", "docx"]),
