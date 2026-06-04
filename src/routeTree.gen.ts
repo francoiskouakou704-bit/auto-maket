@@ -19,6 +19,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VehiclesIdRouteImport } from './routes/vehicles.$id'
 import { Route as ApiSearchChatRouteImport } from './routes/api/search-chat'
+import { Route as ApiExportRouteImport } from './routes/api/export'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminAlertsRouteImport } from './routes/admin.alerts'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments.webhook'
@@ -73,6 +74,11 @@ const ApiSearchChatRoute = ApiSearchChatRouteImport.update({
   path: '/api/search-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiExportRoute = ApiExportRouteImport.update({
+  id: '/api/export',
+  path: '/api/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/api/export': typeof ApiExportRoute
   '/api/search-chat': typeof ApiSearchChatRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/api/export': typeof ApiExportRoute
   '/api/search-chat': typeof ApiSearchChatRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/api/export': typeof ApiExportRoute
   '/api/search-chat': typeof ApiSearchChatRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/sell'
     | '/admin/alerts'
     | '/admin/notifications'
+    | '/api/export'
     | '/api/search-chat'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/sell'
     | '/admin/alerts'
     | '/admin/notifications'
+    | '/api/export'
     | '/api/search-chat'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/sell'
     | '/admin/alerts'
     | '/admin/notifications'
+    | '/api/export'
     | '/api/search-chat'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
@@ -193,6 +205,7 @@ export interface RootRouteChildren {
   FavoritesRoute: typeof FavoritesRoute
   SearchRoute: typeof SearchRoute
   SellRoute: typeof SellRoute
+  ApiExportRoute: typeof ApiExportRoute
   ApiSearchChatRoute: typeof ApiSearchChatRoute
   VehiclesIdRoute: typeof VehiclesIdRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -270,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSearchChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/export': {
+      id: '/api/export'
+      path: '/api/export'
+      fullPath: '/api/export'
+      preLoaderRoute: typeof ApiExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/notifications': {
       id: '/admin/notifications'
       path: '/notifications'
@@ -315,6 +335,7 @@ const rootRouteChildren: RootRouteChildren = {
   FavoritesRoute: FavoritesRoute,
   SearchRoute: SearchRoute,
   SellRoute: SellRoute,
+  ApiExportRoute: ApiExportRoute,
   ApiSearchChatRoute: ApiSearchChatRoute,
   VehiclesIdRoute: VehiclesIdRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
@@ -322,3 +343,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
