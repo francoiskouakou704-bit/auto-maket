@@ -761,3 +761,134 @@ function ExportLogsPanel() {
     </Card>
   );
 }
+
+function ExportAlertsPanel() {
+  const [status, setStatus] = useState<"all" | "open" | "acknowledged" | "resolved">("open");
+  const list = useServerFn(listExportAlerts);
+  const update = useServerFn(updateExportAlertStatus);
+  const runCheck = useServerFn(runExportAlertCheck);
+  const qc = useQueryClient();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["export-alerts", status],
+    queryFn: () => list({ data: { status } }),
+  });
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ["export-alerts"] });
+
+  const setStatusFor = async (id: string, s: "acknowledged" | "resolved" | "open") => {
+    try {
+      await update({ data: { id, status: s } });
+      toast.success("Alerte mise à jour");
+      refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const runNow = async () => {
+    try {
+      await runCheck({});
+      toast.success("Évaluation lancée");
+      refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const alerts = data?.alerts ?? [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            Alertes Exports
+          </span>
+          <div className="flex items-center gap-2">
+            <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
+              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous statuts</SelectItem>
+                <SelectItem value="open">Ouvertes</SelectItem>
+                <SelectItem value="acknowledged">Acquittées</SelectItem>
+                <SelectItem value="resolved">Résolues</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={runNow}>
+              <RefreshCw className="h-4 w-4 mr-1.5" />Évaluer maintenant
+            </Button>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-4">
+          Seuils sur fenêtre glissante de 15 min — Taux d'échec ≥ 30 % (min. 10 tentatives) · Replays de nonce ≥ 5.
+          Évaluation auto toutes les 5 minutes, déduplication sur 30 min.
+        </p>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Chargement…</p>
+        ) : alerts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Aucune alerte.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Sévérité</TableHead>
+                <TableHead>Message</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {alerts.map((a) => (
+                <TableRow key={a.id}>
+                  <TableCell className="text-xs whitespace-nowrap">
+                    {new Date(a.created_at).toLocaleString("fr-FR")}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{a.kind}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={a.severity === "critical" ? "destructive" : "secondary"}>
+                      {a.severity}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="max-w-md">{a.message}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        a.status === "open"
+                          ? "destructive"
+                          : a.status === "acknowledged"
+                          ? "secondary"
+                          : "outline"
+                      }
+                    >
+                      {a.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right space-x-2">
+                    {a.status === "open" && (
+                      <Button size="sm" variant="outline" onClick={() => setStatusFor(a.id, "acknowledged")}>
+                        Acquitter
+                      </Button>
+                    )}
+                    {a.status !== "resolved" && (
+                      <Button size="sm" onClick={() => setStatusFor(a.id, "resolved")}>
+                        Résoudre
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
