@@ -11,15 +11,14 @@ import {
 } from "docx";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
+const NONCE_RE = /^[A-Za-z0-9_-]{16,128}$/;
+const RATE_LIMIT_PER_MIN = 10;
+
 const Schema = z.object({
   format: z.enum(["pdf", "docx"]),
-  query: z.string().min(1).max(500),
-  synthesis: z.string().min(1).max(50000),
-  sources: z
-    .array(z.object({ title: z.string().max(500), url: z.string().url().max(2000) }))
-    .max(20)
-    .optional()
-    .default([]),
+  nonce: z.string().regex(NONCE_RE, "invalid nonce"),
+  historyId: z.string().uuid().optional(),
+  query: z.string().min(1).max(500).optional(),
 });
 
 export const Route = createFileRoute("/api/export")({
@@ -34,7 +33,9 @@ export const Route = createFileRoute("/api/export")({
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: userRes } = await supabaseAdmin.auth.getUser(token);
-        if (!userRes?.user) return new Response("Unauthorized", { status: 401 });
+        const user = userRes?.user;
+        if (!user) return new Response("Unauthorized", { status: 401 });
+        const userId = user.id;
 
         let parsed: z.infer<typeof Schema>;
         try {
@@ -46,28 +47,156 @@ export const Route = createFileRoute("/api/export")({
           });
         }
 
-        const { format, query, synthesis, sources } = parsed;
+        const { format, nonce, historyId, query: rawQuery } = parsed;
+        const ip =
+          request.headers.get("cf-connecting-ip") ??
+          request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+          null;
+        const userAgent = request.headers.get("user-agent")?.slice(0, 500) ?? null;
+
+        // ---- Anti-replay: reserve the nonce (unique per user). ----
+        const { error: nonceErr } = await supabaseAdmin
+          .from("export_logs")
+          .insert({
+            user_id: userId,
+            history_id: historyId ?? null,
+            format,
+            nonce,
+            query: rawQuery ?? null,
+            ip,
+            user_agent: userAgent,
+            success: false,
+            error: "pending",
+          });
+        if (nonceErr) {
+          const code = (nonceErr as { code?: string }).code;
+          if (code === "23505") {
+            return new Response(JSON.stringify({ error: "replay_detected" }), {
+              status: 409,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          return new Response(JSON.stringify({ error: "log_failed" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const finalize = async (ok: boolean, errMsg?: string) => {
+          await supabaseAdmin
+            .from("export_logs")
+            .update({ success: ok, error: ok ? null : (errMsg ?? "error").slice(0, 500) })
+            .eq("user_id", userId)
+            .eq("nonce", nonce);
+        };
+
+        // ---- Rate limit: 10 exports / 60s per user. ----
+        const since = new Date(Date.now() - 60_000).toISOString();
+        const { count: recent } = await supabaseAdmin
+          .from("export_logs")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .gte("created_at", since);
+        if ((recent ?? 0) > RATE_LIMIT_PER_MIN) {
+          await finalize(false, "rate_limited");
+          return new Response(JSON.stringify({ error: "rate_limited", limit: RATE_LIMIT_PER_MIN }), {
+            status: 429,
+            headers: { "Content-Type": "application/json", "Retry-After": "60" },
+          });
+        }
+
+        // ---- Ownership: resolve synthesis & sources from DB, NEVER trust client. ----
+        let row:
+          | { id: string; query: string; synthesis: string | null; sources: unknown }
+          | null = null;
+
+        if (historyId) {
+          const { data } = await supabaseAdmin
+            .from("search_history")
+            .select("id, query, synthesis, sources, user_id")
+            .eq("id", historyId)
+            .maybeSingle();
+          if (!data || data.user_id !== userId) {
+            await finalize(false, "forbidden_history");
+            return new Response(JSON.stringify({ error: "forbidden" }), {
+              status: 403,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          row = data;
+        } else if (rawQuery) {
+          const { data } = await supabaseAdmin
+            .from("search_history")
+            .select("id, query, synthesis, sources")
+            .eq("user_id", userId)
+            .eq("query", rawQuery)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          row = data ?? null;
+        }
+
+        if (!row || !row.synthesis) {
+          await finalize(false, "not_found");
+          return new Response(JSON.stringify({ error: "not_found", message: "Synthèse introuvable ou non enregistrée." }), {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (!historyId) {
+          await supabaseAdmin
+            .from("export_logs")
+            .update({ history_id: row.id })
+            .eq("user_id", userId)
+            .eq("nonce", nonce);
+        }
+
+        const query = row.query;
+        const synthesis = row.synthesis;
+        const sources = Array.isArray(row.sources)
+          ? (row.sources as { title?: unknown; url?: unknown }[])
+              .filter((s) => s && typeof s.url === "string")
+              .slice(0, 20)
+              .map((s) => ({
+                title: typeof s.title === "string" ? s.title.slice(0, 500) : "",
+                url: (s.url as string).slice(0, 2000),
+              }))
+          : [];
+
         const safeName = query.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60) || "recherche";
         const filename = `synthese-${safeName}.${format}`;
 
-        if (format === "docx") {
-          const bytes = await buildDocx(query, synthesis, sources);
-          return new Response(bytes as unknown as ArrayBuffer, {
+        try {
+          if (format === "docx") {
+            const bytes = await buildDocx(query, synthesis, sources);
+            await finalize(true);
+            return new Response(bytes as unknown as ArrayBuffer, {
+              status: 200,
+              headers: {
+                "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "Content-Disposition": `attachment; filename="${filename}"`,
+                "Cache-Control": "no-store",
+              },
+            });
+          }
+          const pdfBytes = await buildPdf(query, synthesis, sources);
+          await finalize(true);
+          return new Response(pdfBytes as unknown as ArrayBuffer, {
             status: 200,
             headers: {
-              "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "Content-Type": "application/pdf",
               "Content-Disposition": `attachment; filename="${filename}"`,
+              "Cache-Control": "no-store",
             },
           });
+        } catch (e) {
+          await finalize(false, (e as Error).message);
+          return new Response(JSON.stringify({ error: "generation_failed" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
-        const pdfBytes = await buildPdf(query, synthesis, sources);
-        return new Response(pdfBytes as unknown as ArrayBuffer, {
-          status: 200,
-          headers: {
-            "Content-Type": "application/pdf",
-            "Content-Disposition": `attachment; filename="${filename}"`,
-          },
-        });
       },
     },
   },
