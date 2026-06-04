@@ -90,13 +90,14 @@ function AdminPage() {
       <AdminStats />
 
       <Tabs defaultValue="users" className="mt-8">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 max-w-4xl">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 max-w-5xl">
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Utilisateurs</TabsTrigger>
           <TabsTrigger value="vehicles"><Car className="h-4 w-4 mr-1.5" />Annonces</TabsTrigger>
           <TabsTrigger value="payments"><CreditCard className="h-4 w-4 mr-1.5" />Paiements</TabsTrigger>
           <TabsTrigger value="reports"><Flag className="h-4 w-4 mr-1.5" />Signalements</TabsTrigger>
           <TabsTrigger value="alerts"><AlertTriangle className="h-4 w-4 mr-1.5" />Alertes</TabsTrigger>
           <TabsTrigger value="exports"><FileText className="h-4 w-4 mr-1.5" />Exports</TabsTrigger>
+          <TabsTrigger value="export-alerts"><AlertTriangle className="h-4 w-4 mr-1.5" />Alertes Exports</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-6"><UsersPanel /></TabsContent>
@@ -105,6 +106,7 @@ function AdminPage() {
         <TabsContent value="reports" className="mt-6"><ReportsPanel /></TabsContent>
         <TabsContent value="alerts" className="mt-6"><AlertsPanel /></TabsContent>
         <TabsContent value="exports" className="mt-6"><ExportLogsPanel /></TabsContent>
+        <TabsContent value="export-alerts" className="mt-6"><ExportAlertsPanel /></TabsContent>
       </Tabs>
     </div>
   );
