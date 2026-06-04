@@ -86,7 +86,7 @@ function HistoryPage() {
                   </div>
                 </button>
                 <div className="flex items-center gap-1 shrink-0">
-                  <ExportButtons query={item.query} synthesis={item.synthesis ?? ""} sources={sources} />
+                  <ExportButtons query={item.query} historyId={item.id} synthesis={item.synthesis ?? ""} />
                   <Button
                     variant="ghost"
                     size="icon"
