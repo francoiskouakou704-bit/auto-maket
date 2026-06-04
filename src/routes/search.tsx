@@ -1,16 +1,19 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, ExternalLink, Loader2, Search, Send, Sparkles } from "lucide-react";
+import { ArrowRight, Crown, ExternalLink, FileDown, FileText, Loader2, Search, Send, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { webSearch, type SearchResult } from "@/lib/search.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { exportSynthesis } from "@/lib/export-client";
 
 type SearchSchema = { q?: string };
 
