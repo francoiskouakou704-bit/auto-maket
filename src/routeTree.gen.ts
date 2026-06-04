@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SellRouteImport } from './routes/sell'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BrowseRouteImport } from './routes/browse'
@@ -17,6 +18,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VehiclesIdRouteImport } from './routes/vehicles.$id'
+import { Route as ApiSearchChatRouteImport } from './routes/api/search-chat'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminAlertsRouteImport } from './routes/admin.alerts'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments.webhook'
@@ -24,6 +26,11 @@ import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/publi
 const SellRoute = SellRouteImport.update({
   id: '/sell',
   path: '/sell',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FavoritesRoute = FavoritesRouteImport.update({
@@ -61,6 +68,11 @@ const VehiclesIdRoute = VehiclesIdRouteImport.update({
   path: '/vehicles/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSearchChatRoute = ApiSearchChatRouteImport.update({
+  id: '/api/search-chat',
+  path: '/api/search-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -85,9 +97,11 @@ export interface FileRoutesByFullPath {
   '/browse': typeof BrowseRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
+  '/search': typeof SearchRoute
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/api/search-chat': typeof ApiSearchChatRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -98,9 +112,11 @@ export interface FileRoutesByTo {
   '/browse': typeof BrowseRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
+  '/search': typeof SearchRoute
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/api/search-chat': typeof ApiSearchChatRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -112,9 +128,11 @@ export interface FileRoutesById {
   '/browse': typeof BrowseRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
+  '/search': typeof SearchRoute
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/api/search-chat': typeof ApiSearchChatRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -127,9 +145,11 @@ export interface FileRouteTypes {
     | '/browse'
     | '/dashboard'
     | '/favorites'
+    | '/search'
     | '/sell'
     | '/admin/alerts'
     | '/admin/notifications'
+    | '/api/search-chat'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -140,9 +160,11 @@ export interface FileRouteTypes {
     | '/browse'
     | '/dashboard'
     | '/favorites'
+    | '/search'
     | '/sell'
     | '/admin/alerts'
     | '/admin/notifications'
+    | '/api/search-chat'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
   id:
@@ -153,9 +175,11 @@ export interface FileRouteTypes {
     | '/browse'
     | '/dashboard'
     | '/favorites'
+    | '/search'
     | '/sell'
     | '/admin/alerts'
     | '/admin/notifications'
+    | '/api/search-chat'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
@@ -167,7 +191,9 @@ export interface RootRouteChildren {
   BrowseRoute: typeof BrowseRoute
   DashboardRoute: typeof DashboardRoute
   FavoritesRoute: typeof FavoritesRoute
+  SearchRoute: typeof SearchRoute
   SellRoute: typeof SellRoute
+  ApiSearchChatRoute: typeof ApiSearchChatRoute
   VehiclesIdRoute: typeof VehiclesIdRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
@@ -179,6 +205,13 @@ declare module '@tanstack/react-router' {
       path: '/sell'
       fullPath: '/sell'
       preLoaderRoute: typeof SellRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/favorites': {
@@ -230,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VehiclesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/search-chat': {
+      id: '/api/search-chat'
+      path: '/api/search-chat'
+      fullPath: '/api/search-chat'
+      preLoaderRoute: typeof ApiSearchChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/notifications': {
       id: '/admin/notifications'
       path: '/notifications'
@@ -273,7 +313,9 @@ const rootRouteChildren: RootRouteChildren = {
   BrowseRoute: BrowseRoute,
   DashboardRoute: DashboardRoute,
   FavoritesRoute: FavoritesRoute,
+  SearchRoute: SearchRoute,
   SellRoute: SellRoute,
+  ApiSearchChatRoute: ApiSearchChatRoute,
   VehiclesIdRoute: VehiclesIdRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
