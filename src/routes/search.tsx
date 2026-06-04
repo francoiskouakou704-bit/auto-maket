@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { webSearch, type SearchResult } from "@/lib/search.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { exportSynthesis } from "@/lib/export-client";
+import { useAuth } from "@/lib/use-auth";
 
 type SearchSchema = { q?: string };
 
