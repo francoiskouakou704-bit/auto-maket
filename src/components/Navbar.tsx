@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Car, Heart, LayoutDashboard, LogOut, Menu, Plus, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { Car, Crown, Heart, History, LayoutDashboard, LogOut, Menu, Plus, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -28,6 +28,9 @@ export function Navbar() {
           <Link to="/favorites" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-smooth">
             <Heart className="inline h-4 w-4 mr-1.5" />Favoris
           </Link>
+          <Link to="/history" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-smooth">
+            <History className="inline h-4 w-4 mr-1.5" />Historique
+          </Link>
           <Link to="/dashboard" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-smooth">
             <LayoutDashboard className="inline h-4 w-4 mr-1.5" />Tableau de bord
           </Link>
@@ -38,6 +41,9 @@ export function Navbar() {
           )}
         </>
       )}
+      <Link to="/premium" className="text-sm font-medium text-primary hover:opacity-80 transition-smooth">
+        <Crown className="inline h-4 w-4 mr-1.5" />Premium
+      </Link>
     </>
   );
 

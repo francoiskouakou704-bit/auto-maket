@@ -1,16 +1,20 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, ExternalLink, Loader2, Search, Send, Sparkles } from "lucide-react";
+import { ArrowRight, Crown, ExternalLink, FileDown, FileText, Loader2, Search, Send, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { webSearch, type SearchResult } from "@/lib/search.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { exportSynthesis } from "@/lib/export-client";
+import { useAuth } from "@/lib/use-auth";
 
 type SearchSchema = { q?: string };
 
@@ -181,15 +185,34 @@ function AiAssistant({
   sources: SearchResult[];
   ready: boolean;
 }) {
-  const transport = useRef(new DefaultChatTransport({ api: "/api/search-chat" }));
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/search-chat",
+        fetch: async (input, init) => {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          const headers = new Headers(init?.headers);
+          if (token) headers.set("Authorization", `Bearer ${token}`);
+          const res = await fetch(input, { ...init, headers });
+          if (res.status === 429) {
+            const body = await res.clone().json().catch(() => ({}));
+            toast.error(body?.message ?? "Quota quotidien atteint");
+          }
+          return res;
+        },
+      }),
+    [],
+  );
   const sourcesRef = useRef(sources);
   const queryRef = useRef(query);
   sourcesRef.current = sources;
   queryRef.current = query;
 
+  // Track latest assistant text for export buttons
   const { messages, sendMessage, status, setMessages } = useChat({
     id: `search-${query}`,
-    transport: transport.current,
+    transport,
   });
 
   // Auto-ask the initial synthesis question when sources are ready
@@ -222,16 +245,37 @@ function AiAssistant({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, status]);
 
+  // Extract latest assistant text for export
+  const lastAssistantText = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") {
+        return messages[i].parts
+          .map((p) => (p.type === "text" ? (p as { text: string }).text : ""))
+          .join("");
+      }
+    }
+    return "";
+  })();
+  const canExport = !!lastAssistantText && !isLoading && ready;
+
   return (
     <div className="rounded-2xl border border-border bg-card shadow-card flex flex-col h-[calc(100vh-10rem)] overflow-hidden">
-      <div className="px-5 py-3 border-b border-border flex items-center gap-2">
-        <div className="h-7 w-7 rounded-lg bg-gradient-primary flex items-center justify-center">
-          <Sparkles className="h-4 w-4 text-primary-foreground" />
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-7 w-7 rounded-lg bg-gradient-primary flex items-center justify-center shrink-0">
+            <Sparkles className="h-4 w-4 text-primary-foreground" />
+          </div>
+          <div className="min-w-0">
+            <div className="font-medium text-sm">Assistant IA</div>
+            <div className="text-xs text-muted-foreground truncate">Synthèse avec sources citées</div>
+          </div>
         </div>
-        <div>
-          <div className="font-medium text-sm">Assistant IA</div>
-          <div className="text-xs text-muted-foreground">Synthèse avec sources citées</div>
-        </div>
+        <ExportMenu
+          disabled={!canExport}
+          query={query}
+          synthesis={lastAssistantText}
+          sources={sources}
+        />
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -301,6 +345,55 @@ function AiAssistant({
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </form>
+    </div>
+  );
+}
+
+function ExportMenu({
+  query,
+  synthesis,
+  sources,
+  disabled,
+}: {
+  query: string;
+  synthesis: string;
+  sources: SearchResult[];
+  disabled?: boolean;
+}) {
+  const { user } = useAuth();
+  const [busy, setBusy] = useState<"pdf" | "docx" | null>(null);
+
+  const run = async (format: "pdf" | "docx") => {
+    if (!user) {
+      toast.error("Connectez-vous pour exporter");
+      return;
+    }
+    setBusy(format);
+    try {
+      await exportSynthesis({
+        format,
+        query,
+        synthesis,
+        sources: sources.map((s) => ({ title: s.title, url: s.url })),
+      });
+      toast.success(`Export ${format.toUpperCase()} prêt`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <Button variant="ghost" size="sm" disabled={disabled || !!busy} onClick={() => run("pdf")} title="Exporter en PDF">
+        {busy === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+        <span className="hidden sm:inline ml-1 text-xs">PDF</span>
+      </Button>
+      <Button variant="ghost" size="sm" disabled={disabled || !!busy} onClick={() => run("docx")} title="Exporter en Word">
+        {busy === "docx" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+        <span className="hidden sm:inline ml-1 text-xs">Word</span>
+      </Button>
     </div>
   );
 }

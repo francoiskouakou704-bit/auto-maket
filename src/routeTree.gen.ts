@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SellRouteImport } from './routes/sell'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as PremiumRouteImport } from './routes/premium'
+import { Route as HistoryRouteImport } from './routes/history'
 import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BrowseRouteImport } from './routes/browse'
@@ -19,6 +21,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VehiclesIdRouteImport } from './routes/vehicles.$id'
 import { Route as ApiSearchChatRouteImport } from './routes/api/search-chat'
+import { Route as ApiExportRouteImport } from './routes/api/export'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminAlertsRouteImport } from './routes/admin.alerts'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments.webhook'
@@ -31,6 +34,16 @@ const SellRoute = SellRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PremiumRoute = PremiumRouteImport.update({
+  id: '/premium',
+  path: '/premium',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FavoritesRoute = FavoritesRouteImport.update({
@@ -73,6 +86,11 @@ const ApiSearchChatRoute = ApiSearchChatRouteImport.update({
   path: '/api/search-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiExportRoute = ApiExportRouteImport.update({
+  id: '/api/export',
+  path: '/api/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -97,10 +115,13 @@ export interface FileRoutesByFullPath {
   '/browse': typeof BrowseRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
+  '/history': typeof HistoryRoute
+  '/premium': typeof PremiumRoute
   '/search': typeof SearchRoute
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/api/export': typeof ApiExportRoute
   '/api/search-chat': typeof ApiSearchChatRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -112,10 +133,13 @@ export interface FileRoutesByTo {
   '/browse': typeof BrowseRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
+  '/history': typeof HistoryRoute
+  '/premium': typeof PremiumRoute
   '/search': typeof SearchRoute
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/api/export': typeof ApiExportRoute
   '/api/search-chat': typeof ApiSearchChatRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -128,10 +152,13 @@ export interface FileRoutesById {
   '/browse': typeof BrowseRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
+  '/history': typeof HistoryRoute
+  '/premium': typeof PremiumRoute
   '/search': typeof SearchRoute
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/api/export': typeof ApiExportRoute
   '/api/search-chat': typeof ApiSearchChatRoute
   '/vehicles/$id': typeof VehiclesIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -145,10 +172,13 @@ export interface FileRouteTypes {
     | '/browse'
     | '/dashboard'
     | '/favorites'
+    | '/history'
+    | '/premium'
     | '/search'
     | '/sell'
     | '/admin/alerts'
     | '/admin/notifications'
+    | '/api/export'
     | '/api/search-chat'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
@@ -160,10 +190,13 @@ export interface FileRouteTypes {
     | '/browse'
     | '/dashboard'
     | '/favorites'
+    | '/history'
+    | '/premium'
     | '/search'
     | '/sell'
     | '/admin/alerts'
     | '/admin/notifications'
+    | '/api/export'
     | '/api/search-chat'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
@@ -175,10 +208,13 @@ export interface FileRouteTypes {
     | '/browse'
     | '/dashboard'
     | '/favorites'
+    | '/history'
+    | '/premium'
     | '/search'
     | '/sell'
     | '/admin/alerts'
     | '/admin/notifications'
+    | '/api/export'
     | '/api/search-chat'
     | '/vehicles/$id'
     | '/api/public/payments/webhook'
@@ -191,8 +227,11 @@ export interface RootRouteChildren {
   BrowseRoute: typeof BrowseRoute
   DashboardRoute: typeof DashboardRoute
   FavoritesRoute: typeof FavoritesRoute
+  HistoryRoute: typeof HistoryRoute
+  PremiumRoute: typeof PremiumRoute
   SearchRoute: typeof SearchRoute
   SellRoute: typeof SellRoute
+  ApiExportRoute: typeof ApiExportRoute
   ApiSearchChatRoute: typeof ApiSearchChatRoute
   VehiclesIdRoute: typeof VehiclesIdRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -212,6 +251,20 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/premium': {
+      id: '/premium'
+      path: '/premium'
+      fullPath: '/premium'
+      preLoaderRoute: typeof PremiumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/favorites': {
@@ -270,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSearchChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/export': {
+      id: '/api/export'
+      path: '/api/export'
+      fullPath: '/api/export'
+      preLoaderRoute: typeof ApiExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/notifications': {
       id: '/admin/notifications'
       path: '/notifications'
@@ -313,8 +373,11 @@ const rootRouteChildren: RootRouteChildren = {
   BrowseRoute: BrowseRoute,
   DashboardRoute: DashboardRoute,
   FavoritesRoute: FavoritesRoute,
+  HistoryRoute: HistoryRoute,
+  PremiumRoute: PremiumRoute,
   SearchRoute: SearchRoute,
   SellRoute: SellRoute,
+  ApiExportRoute: ApiExportRoute,
   ApiSearchChatRoute: ApiSearchChatRoute,
   VehiclesIdRoute: VehiclesIdRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
