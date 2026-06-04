@@ -19,7 +19,7 @@ import {
   Search,
 } from "lucide-react";
 import { scanPaymentAlerts, updateAlertStatus } from "@/lib/payment-alerts.functions";
-import { listExportLogs } from "@/lib/admin.functions";
+import { listExportLogs, listExportAlerts, updateExportAlertStatus, runExportAlertCheck } from "@/lib/admin.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -90,13 +90,14 @@ function AdminPage() {
       <AdminStats />
 
       <Tabs defaultValue="users" className="mt-8">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 max-w-4xl">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 max-w-5xl">
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Utilisateurs</TabsTrigger>
           <TabsTrigger value="vehicles"><Car className="h-4 w-4 mr-1.5" />Annonces</TabsTrigger>
           <TabsTrigger value="payments"><CreditCard className="h-4 w-4 mr-1.5" />Paiements</TabsTrigger>
           <TabsTrigger value="reports"><Flag className="h-4 w-4 mr-1.5" />Signalements</TabsTrigger>
           <TabsTrigger value="alerts"><AlertTriangle className="h-4 w-4 mr-1.5" />Alertes</TabsTrigger>
           <TabsTrigger value="exports"><FileText className="h-4 w-4 mr-1.5" />Exports</TabsTrigger>
+          <TabsTrigger value="export-alerts"><AlertTriangle className="h-4 w-4 mr-1.5" />Alertes Exports</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-6"><UsersPanel /></TabsContent>
@@ -105,6 +106,7 @@ function AdminPage() {
         <TabsContent value="reports" className="mt-6"><ReportsPanel /></TabsContent>
         <TabsContent value="alerts" className="mt-6"><AlertsPanel /></TabsContent>
         <TabsContent value="exports" className="mt-6"><ExportLogsPanel /></TabsContent>
+        <TabsContent value="export-alerts" className="mt-6"><ExportAlertsPanel /></TabsContent>
       </Tabs>
     </div>
   );
@@ -754,6 +756,137 @@ function ExportLogsPanel() {
             <span className="text-sm text-muted-foreground">Page {page + 1} / {pages}</span>
             <Button size="sm" variant="outline" disabled={page >= pages - 1} onClick={() => setPage((p) => p + 1)}>Suivant</Button>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ExportAlertsPanel() {
+  const [status, setStatus] = useState<"all" | "open" | "acknowledged" | "resolved">("open");
+  const list = useServerFn(listExportAlerts);
+  const update = useServerFn(updateExportAlertStatus);
+  const runCheck = useServerFn(runExportAlertCheck);
+  const qc = useQueryClient();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["export-alerts", status],
+    queryFn: () => list({ data: { status } }),
+  });
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ["export-alerts"] });
+
+  const setStatusFor = async (id: string, s: "acknowledged" | "resolved" | "open") => {
+    try {
+      await update({ data: { id, status: s } });
+      toast.success("Alerte mise à jour");
+      refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const runNow = async () => {
+    try {
+      await runCheck({});
+      toast.success("Évaluation lancée");
+      refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const alerts = data?.alerts ?? [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            Alertes Exports
+          </span>
+          <div className="flex items-center gap-2">
+            <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
+              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous statuts</SelectItem>
+                <SelectItem value="open">Ouvertes</SelectItem>
+                <SelectItem value="acknowledged">Acquittées</SelectItem>
+                <SelectItem value="resolved">Résolues</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={runNow}>
+              <RefreshCw className="h-4 w-4 mr-1.5" />Évaluer maintenant
+            </Button>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-4">
+          Seuils sur fenêtre glissante de 15 min — Taux d'échec ≥ 30 % (min. 10 tentatives) · Replays de nonce ≥ 5.
+          Évaluation auto toutes les 5 minutes, déduplication sur 30 min.
+        </p>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Chargement…</p>
+        ) : alerts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Aucune alerte.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Sévérité</TableHead>
+                <TableHead>Message</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {alerts.map((a) => (
+                <TableRow key={a.id}>
+                  <TableCell className="text-xs whitespace-nowrap">
+                    {new Date(a.created_at).toLocaleString("fr-FR")}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{a.kind}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={a.severity === "critical" ? "destructive" : "secondary"}>
+                      {a.severity}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="max-w-md">{a.message}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        a.status === "open"
+                          ? "destructive"
+                          : a.status === "acknowledged"
+                          ? "secondary"
+                          : "outline"
+                      }
+                    >
+                      {a.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right space-x-2">
+                    {a.status === "open" && (
+                      <Button size="sm" variant="outline" onClick={() => setStatusFor(a.id, "acknowledged")}>
+                        Acquitter
+                      </Button>
+                    )}
+                    {a.status !== "resolved" && (
+                      <Button size="sm" onClick={() => setStatusFor(a.id, "resolved")}>
+                        Résoudre
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </CardContent>
     </Card>

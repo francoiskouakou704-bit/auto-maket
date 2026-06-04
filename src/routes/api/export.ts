@@ -71,6 +71,12 @@ export const Route = createFileRoute("/api/export")({
         if (nonceErr) {
           const code = (nonceErr as { code?: string }).code;
           if (code === "23505") {
+            await supabaseAdmin.from("export_replay_attempts").insert({
+              user_id: userId,
+              nonce,
+              ip,
+              user_agent: userAgent,
+            });
             return new Response(JSON.stringify({ error: "replay_detected" }), {
               status: 409,
               headers: { "Content-Type": "application/json" },
