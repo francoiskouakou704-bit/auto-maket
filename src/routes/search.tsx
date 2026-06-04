@@ -184,15 +184,34 @@ function AiAssistant({
   sources: SearchResult[];
   ready: boolean;
 }) {
-  const transport = useRef(new DefaultChatTransport({ api: "/api/search-chat" }));
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/search-chat",
+        fetch: async (input, init) => {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          const headers = new Headers(init?.headers);
+          if (token) headers.set("Authorization", `Bearer ${token}`);
+          const res = await fetch(input, { ...init, headers });
+          if (res.status === 429) {
+            const body = await res.clone().json().catch(() => ({}));
+            toast.error(body?.message ?? "Quota quotidien atteint");
+          }
+          return res;
+        },
+      }),
+    [],
+  );
   const sourcesRef = useRef(sources);
   const queryRef = useRef(query);
   sourcesRef.current = sources;
   queryRef.current = query;
 
+  // Track latest assistant text for export buttons
   const { messages, sendMessage, status, setMessages } = useChat({
     id: `search-${query}`,
-    transport: transport.current,
+    transport,
   });
 
   // Auto-ask the initial synthesis question when sources are ready
