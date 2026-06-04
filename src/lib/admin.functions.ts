@@ -68,3 +68,67 @@ export const listExportLogs = createServerFn({ method: "GET" })
 
     return { logs: rows ?? [], count: count ?? 0, profiles: profilesMap };
   });
+
+async function assertAdmin(userId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: isAdmin } = await supabaseAdmin.rpc("has_role", {
+    _user_id: userId,
+    _role: "admin",
+  });
+  if (!isAdmin) throw new Error("Forbidden");
+  return supabaseAdmin;
+}
+
+export const listExportAlerts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        status: z.enum(["all", "open", "acknowledged", "resolved"]).optional(),
+      })
+      .parse(d ?? {})
+  )
+  .handler(async ({ data, context }) => {
+    const supabaseAdmin = await assertAdmin(context.userId);
+    let q = supabaseAdmin.from("export_alerts").select("*");
+    if (data.status && data.status !== "all") q = q.eq("status", data.status);
+    const { data: rows, error } = await q
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return { alerts: rows ?? [] };
+  });
+
+export const updateExportAlertStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        status: z.enum(["acknowledged", "resolved", "open"]),
+      })
+      .parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const supabaseAdmin = await assertAdmin(context.userId);
+    const patch: Record<string, unknown> = { status: data.status };
+    if (data.status === "acknowledged") {
+      patch.acknowledged_by = context.userId;
+      patch.acknowledged_at = new Date().toISOString();
+    }
+    const { error } = await supabaseAdmin
+      .from("export_alerts")
+      .update(patch)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const runExportAlertCheck = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const supabaseAdmin = await assertAdmin(context.userId);
+    const { error } = await supabaseAdmin.rpc("check_export_alerts");
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
