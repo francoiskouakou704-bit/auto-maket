@@ -367,6 +367,63 @@ export type Database = {
         }
         Relationships: []
       }
+      search_history: {
+        Row: {
+          created_at: string
+          id: string
+          query: string
+          sources: Json
+          synthesis: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          query: string
+          sources?: Json
+          synthesis?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          query?: string
+          sources?: Json
+          synthesis?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          activated_at: string | null
+          created_at: string
+          expires_at: string | null
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          source: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activated_at?: string | null
+          created_at?: string
+          expires_at?: string | null
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          source?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activated_at?: string | null
+          created_at?: string
+          expires_at?: string | null
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          source?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -519,6 +576,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      count_searches_today: { Args: { _uid: string }; Returns: number }
+      get_user_plan: {
+        Args: { _uid: string }
+        Returns: Database["public"]["Enums"]["subscription_plan"]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -540,6 +602,7 @@ export type Database = {
         | "sold"
         | "other"
       report_status: "pending" | "reviewing" | "resolved" | "dismissed"
+      subscription_plan: "free" | "premium"
       transmission_type: "manual" | "automatic" | "semi_automatic"
       vehicle_status: "draft" | "published" | "sold" | "archived"
     }
@@ -682,6 +745,7 @@ export const Constants = {
         "other",
       ],
       report_status: ["pending", "reviewing", "resolved", "dismissed"],
+      subscription_plan: ["free", "premium"],
       transmission_type: ["manual", "automatic", "semi_automatic"],
       vehicle_status: ["draft", "published", "sold", "archived"],
     },
