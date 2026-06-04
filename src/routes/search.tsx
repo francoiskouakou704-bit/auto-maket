@@ -244,16 +244,37 @@ function AiAssistant({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, status]);
 
+  // Extract latest assistant text for export
+  const lastAssistantText = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") {
+        return messages[i].parts
+          .map((p) => (p.type === "text" ? (p as { text: string }).text : ""))
+          .join("");
+      }
+    }
+    return "";
+  })();
+  const canExport = !!lastAssistantText && !isLoading && ready;
+
   return (
     <div className="rounded-2xl border border-border bg-card shadow-card flex flex-col h-[calc(100vh-10rem)] overflow-hidden">
-      <div className="px-5 py-3 border-b border-border flex items-center gap-2">
-        <div className="h-7 w-7 rounded-lg bg-gradient-primary flex items-center justify-center">
-          <Sparkles className="h-4 w-4 text-primary-foreground" />
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-7 w-7 rounded-lg bg-gradient-primary flex items-center justify-center shrink-0">
+            <Sparkles className="h-4 w-4 text-primary-foreground" />
+          </div>
+          <div className="min-w-0">
+            <div className="font-medium text-sm">Assistant IA</div>
+            <div className="text-xs text-muted-foreground truncate">Synthèse avec sources citées</div>
+          </div>
         </div>
-        <div>
-          <div className="font-medium text-sm">Assistant IA</div>
-          <div className="text-xs text-muted-foreground">Synthèse avec sources citées</div>
-        </div>
+        <ExportMenu
+          disabled={!canExport}
+          query={query}
+          synthesis={lastAssistantText}
+          sources={sources}
+        />
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
