@@ -15,13 +15,17 @@ import {
   XCircle,
   AlertTriangle,
   RefreshCw,
+  FileText,
+  Search,
 } from "lucide-react";
 import { scanPaymentAlerts, updateAlertStatus } from "@/lib/payment-alerts.functions";
+import { listExportLogs } from "@/lib/admin.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -86,12 +90,13 @@ function AdminPage() {
       <AdminStats />
 
       <Tabs defaultValue="users" className="mt-8">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 max-w-3xl">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 max-w-4xl">
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Utilisateurs</TabsTrigger>
           <TabsTrigger value="vehicles"><Car className="h-4 w-4 mr-1.5" />Annonces</TabsTrigger>
           <TabsTrigger value="payments"><CreditCard className="h-4 w-4 mr-1.5" />Paiements</TabsTrigger>
           <TabsTrigger value="reports"><Flag className="h-4 w-4 mr-1.5" />Signalements</TabsTrigger>
           <TabsTrigger value="alerts"><AlertTriangle className="h-4 w-4 mr-1.5" />Alertes</TabsTrigger>
+          <TabsTrigger value="exports"><FileText className="h-4 w-4 mr-1.5" />Exports</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-6"><UsersPanel /></TabsContent>
@@ -99,6 +104,7 @@ function AdminPage() {
         <TabsContent value="payments" className="mt-6"><PaymentsPanel /></TabsContent>
         <TabsContent value="reports" className="mt-6"><ReportsPanel /></TabsContent>
         <TabsContent value="alerts" className="mt-6"><AlertsPanel /></TabsContent>
+        <TabsContent value="exports" className="mt-6"><ExportLogsPanel /></TabsContent>
       </Tabs>
     </div>
   );
@@ -630,6 +636,125 @@ function AlertsPanel() {
             ))}
           </TableBody>
         </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ExportLogsPanel() {
+  const [success, setSuccess] = useState<"all" | "true" | "false">("all");
+  const [format, setFormat] = useState<"all" | "pdf" | "docx">("all");
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [page, setPage] = useState(0);
+  const limit = 50;
+
+  const fetchLogs = useServerFn(listExportLogs);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-export-logs", success, format, search, dateFrom, dateTo, page],
+    queryFn: () =>
+      fetchLogs({
+        data: {
+          success,
+          format,
+          search: search || undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+          limit,
+          offset: page * limit,
+        },
+      }),
+  });
+
+  const logs = data?.logs ?? [];
+  const count = data?.count ?? 0;
+  const profiles = data?.profiles ?? {};
+  const pages = Math.ceil(count / limit) || 1;
+
+  return (
+    <Card className="shadow-elegant">
+      <CardHeader className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <CardTitle>Journal des exports ({count})</CardTitle>
+          <div className="flex flex-wrap gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+                placeholder="Recherche (requête, nonce, erreur…)"
+                className="pl-9 w-64"
+                value={search}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); setPage(0); }}
+              />
+            </div>
+            <Select value={success} onValueChange={(v) => { setSuccess(v as typeof success); setPage(0); }}>
+              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous</SelectItem>
+                <SelectItem value="true">Succès</SelectItem>
+                <SelectItem value="false">Échec</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={format} onValueChange={(v) => { setFormat(v as typeof format); setPage(0); }}>
+              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous formats</SelectItem>
+                <SelectItem value="pdf">PDF</SelectItem>
+                <SelectItem value="docx">Word</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input type="date" value={dateFrom} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setDateFrom(e.target.value); setPage(0); }} className="w-40" />
+            <Input type="date" value={dateTo} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setDateTo(e.target.value); setPage(0); }} className="w-40" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Utilisateur</TableHead>
+              <TableHead>Requête</TableHead>
+              <TableHead>Format</TableHead>
+              <TableHead>IP</TableHead>
+              <TableHead>Statut</TableHead>
+              <TableHead>Motif</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Chargement…</TableCell></TableRow>
+            ) : logs.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Aucun export trouvé</TableCell></TableRow>
+            ) : (
+              logs.map((l) => (
+                <TableRow key={l.id}>
+                  <TableCell className="text-sm whitespace-nowrap">{new Date(l.created_at).toLocaleString()}</TableCell>
+                  <TableCell className="text-sm">{profiles[l.user_id]?.full_name ?? l.user_id.slice(0, 8)}</TableCell>
+                  <TableCell className="max-w-xs truncate text-sm" title={l.query ?? ""}>{l.query ?? "—"}</TableCell>
+                  <TableCell><Badge variant="outline">{l.format.toUpperCase()}</Badge></TableCell>
+                  <TableCell className="text-xs font-mono text-muted-foreground">{l.ip ?? "—"}</TableCell>
+                  <TableCell>
+                    {l.success ? (
+                      <Badge className="bg-green-500/15 text-green-700">Succès</Badge>
+                    ) : (
+                      <Badge className="bg-red-500/15 text-red-700">Échec</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="max-w-xs truncate text-sm text-muted-foreground" title={l.error ?? ""}>{l.error ?? "—"}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+        {pages > 1 && (
+          <div className="flex items-center justify-between mt-4">
+            <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>Précédent</Button>
+            <span className="text-sm text-muted-foreground">Page {page + 1} / {pages}</span>
+            <Button size="sm" variant="outline" disabled={page >= pages - 1} onClick={() => setPage((p) => p + 1)}>Suivant</Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
