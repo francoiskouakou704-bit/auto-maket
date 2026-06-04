@@ -347,3 +347,52 @@ function AiAssistant({
     </div>
   );
 }
+
+function ExportMenu({
+  query,
+  synthesis,
+  sources,
+  disabled,
+}: {
+  query: string;
+  synthesis: string;
+  sources: SearchResult[];
+  disabled?: boolean;
+}) {
+  const { user } = useAuth();
+  const [busy, setBusy] = useState<"pdf" | "docx" | null>(null);
+
+  const run = async (format: "pdf" | "docx") => {
+    if (!user) {
+      toast.error("Connectez-vous pour exporter");
+      return;
+    }
+    setBusy(format);
+    try {
+      await exportSynthesis({
+        format,
+        query,
+        synthesis,
+        sources: sources.map((s) => ({ title: s.title, url: s.url })),
+      });
+      toast.success(`Export ${format.toUpperCase()} prêt`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <Button variant="ghost" size="sm" disabled={disabled || !!busy} onClick={() => run("pdf")} title="Exporter en PDF">
+        {busy === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+        <span className="hidden sm:inline ml-1 text-xs">PDF</span>
+      </Button>
+      <Button variant="ghost" size="sm" disabled={disabled || !!busy} onClick={() => run("docx")} title="Exporter en Word">
+        {busy === "docx" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+        <span className="hidden sm:inline ml-1 text-xs">Word</span>
+      </Button>
+    </div>
+  );
+}
