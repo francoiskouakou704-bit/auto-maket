@@ -373,8 +373,6 @@ function ExportMenu({
       await exportSynthesis({
         format,
         query,
-        synthesis,
-        sources: sources.map((s) => ({ title: s.title, url: s.url })),
       });
       toast.success(`Export ${format.toUpperCase()} prêt`);
     } catch (e) {
