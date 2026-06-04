@@ -12,7 +12,7 @@ import {
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 const NONCE_RE = /^[A-Za-z0-9_-]{16,128}$/;
-const RATE_LIMIT_PER_MIN = 10;
+const DEFAULT_RATE_LIMIT_PER_MIN = 10;
 
 const Schema = z.object({
   format: z.enum(["pdf", "docx"]),
@@ -53,6 +53,39 @@ export const Route = createFileRoute("/api/export")({
           request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
           null;
         const userAgent = request.headers.get("user-agent")?.slice(0, 500) ?? null;
+
+        // ---- User block check (auto-mitigation may block abusive users). ----
+        const nowIso = new Date().toISOString();
+        const { data: activeBlock } = await supabaseAdmin
+          .from("export_user_blocks")
+          .select("blocked_until, reason")
+          .eq("user_id", userId)
+          .gt("blocked_until", nowIso)
+          .order("blocked_until", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (activeBlock) {
+          return new Response(
+            JSON.stringify({
+              error: "user_blocked",
+              reason: activeBlock.reason,
+              blocked_until: activeBlock.blocked_until,
+            }),
+            { status: 403, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
+        // ---- Load system state (degraded mode tightens rate limit). ----
+        const { data: state } = await supabaseAdmin
+          .from("export_system_state")
+          .select("base_rate_limit_per_min, degraded_rate_limit_per_min, degraded_until")
+          .eq("id", true)
+          .maybeSingle();
+        const degraded =
+          !!state?.degraded_until && new Date(state.degraded_until).getTime() > Date.now();
+        const rateLimit = degraded
+          ? state?.degraded_rate_limit_per_min ?? 3
+          : state?.base_rate_limit_per_min ?? DEFAULT_RATE_LIMIT_PER_MIN;
 
         // ---- Anti-replay: reserve the nonce (unique per user). ----
         const { error: nonceErr } = await supabaseAdmin
@@ -96,19 +129,22 @@ export const Route = createFileRoute("/api/export")({
             .eq("nonce", nonce);
         };
 
-        // ---- Rate limit: 10 exports / 60s per user. ----
+        // ---- Rate limit: dynamic (tighter in degraded mode). ----
         const since = new Date(Date.now() - 60_000).toISOString();
         const { count: recent } = await supabaseAdmin
           .from("export_logs")
           .select("id", { count: "exact", head: true })
           .eq("user_id", userId)
           .gte("created_at", since);
-        if ((recent ?? 0) > RATE_LIMIT_PER_MIN) {
-          await finalize(false, "rate_limited");
-          return new Response(JSON.stringify({ error: "rate_limited", limit: RATE_LIMIT_PER_MIN }), {
-            status: 429,
-            headers: { "Content-Type": "application/json", "Retry-After": "60" },
-          });
+        if ((recent ?? 0) > rateLimit) {
+          await finalize(false, degraded ? "rate_limited_degraded" : "rate_limited");
+          return new Response(
+            JSON.stringify({ error: "rate_limited", limit: rateLimit, degraded }),
+            {
+              status: 429,
+              headers: { "Content-Type": "application/json", "Retry-After": "60" },
+            },
+          );
         }
 
         // ---- Ownership: resolve synthesis & sources from DB, NEVER trust client. ----

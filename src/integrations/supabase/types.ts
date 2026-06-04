@@ -56,6 +56,7 @@ export type Database = {
           id: string
           kind: string
           message: string
+          mitigation: Json | null
           severity: string
           status: string
           updated_at: string
@@ -68,6 +69,7 @@ export type Database = {
           id?: string
           kind: string
           message: string
+          mitigation?: Json | null
           severity?: string
           status?: string
           updated_at?: string
@@ -80,6 +82,7 @@ export type Database = {
           id?: string
           kind?: string
           message?: string
+          mitigation?: Json | null
           severity?: string
           status?: string
           updated_at?: string
@@ -152,6 +155,60 @@ export type Database = {
           nonce?: string
           user_agent?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      export_system_state: {
+        Row: {
+          auto_mitigation_enabled: boolean
+          base_rate_limit_per_min: number
+          degraded_rate_limit_per_min: number
+          degraded_until: string | null
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          auto_mitigation_enabled?: boolean
+          base_rate_limit_per_min?: number
+          degraded_rate_limit_per_min?: number
+          degraded_until?: string | null
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          auto_mitigation_enabled?: boolean
+          base_rate_limit_per_min?: number
+          degraded_rate_limit_per_min?: number
+          degraded_until?: string | null
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      export_user_blocks: {
+        Row: {
+          blocked_until: string
+          created_at: string
+          created_by: string | null
+          id: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          blocked_until: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          blocked_until?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string
+          user_id?: string
         }
         Relationships: []
       }

@@ -136,3 +136,84 @@ export const runExportAlertCheck = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const getExportSystemState = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const supabaseAdmin = await assertAdmin(context.userId);
+    const { data, error } = await supabaseAdmin
+      .from("export_system_state")
+      .select("*")
+      .eq("id", true)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return { state: data };
+  });
+
+export const updateExportSystemState = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        auto_mitigation_enabled: z.boolean().optional(),
+        base_rate_limit_per_min: z.number().int().min(1).max(1000).optional(),
+        degraded_rate_limit_per_min: z.number().int().min(1).max(1000).optional(),
+        clear_degraded: z.boolean().optional(),
+      })
+      .parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const supabaseAdmin = await assertAdmin(context.userId);
+    const patch: {
+      auto_mitigation_enabled?: boolean;
+      base_rate_limit_per_min?: number;
+      degraded_rate_limit_per_min?: number;
+      degraded_until?: string | null;
+      updated_at: string;
+    } = { updated_at: new Date().toISOString() };
+    if (data.auto_mitigation_enabled !== undefined) patch.auto_mitigation_enabled = data.auto_mitigation_enabled;
+    if (data.base_rate_limit_per_min !== undefined) patch.base_rate_limit_per_min = data.base_rate_limit_per_min;
+    if (data.degraded_rate_limit_per_min !== undefined) patch.degraded_rate_limit_per_min = data.degraded_rate_limit_per_min;
+    if (data.clear_degraded) patch.degraded_until = null;
+    const { error } = await supabaseAdmin
+      .from("export_system_state")
+      .update(patch)
+      .eq("id", true);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const listExportUserBlocks = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const supabaseAdmin = await assertAdmin(context.userId);
+    const { data: blocks, error } = await supabaseAdmin
+      .from("export_user_blocks")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    const userIds = [...new Set((blocks ?? []).map((b) => b.user_id))];
+    const profilesMap: Record<string, { full_name: string | null }> = {};
+    if (userIds.length) {
+      const { data: profs } = await supabaseAdmin
+        .from("profiles")
+        .select("id,full_name")
+        .in("id", userIds);
+      for (const p of profs ?? []) profilesMap[p.id] = p;
+    }
+    return { blocks: blocks ?? [], profiles: profilesMap };
+  });
+
+export const unblockExportUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const supabaseAdmin = await assertAdmin(context.userId);
+    const { error } = await supabaseAdmin
+      .from("export_user_blocks")
+      .update({ blocked_until: new Date().toISOString() })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
