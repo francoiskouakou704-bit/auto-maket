@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SellRouteImport } from './routes/sell'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as PremiumRouteImport } from './routes/premium'
+import { Route as HistoryRouteImport } from './routes/history'
 import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BrowseRouteImport } from './routes/browse'
@@ -32,6 +34,16 @@ const SellRoute = SellRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PremiumRoute = PremiumRouteImport.update({
+  id: '/premium',
+  path: '/premium',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FavoritesRoute = FavoritesRouteImport.update({
@@ -103,6 +115,8 @@ export interface FileRoutesByFullPath {
   '/browse': typeof BrowseRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
+  '/history': typeof HistoryRoute
+  '/premium': typeof PremiumRoute
   '/search': typeof SearchRoute
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
@@ -119,6 +133,8 @@ export interface FileRoutesByTo {
   '/browse': typeof BrowseRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
+  '/history': typeof HistoryRoute
+  '/premium': typeof PremiumRoute
   '/search': typeof SearchRoute
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
@@ -136,6 +152,8 @@ export interface FileRoutesById {
   '/browse': typeof BrowseRoute
   '/dashboard': typeof DashboardRoute
   '/favorites': typeof FavoritesRoute
+  '/history': typeof HistoryRoute
+  '/premium': typeof PremiumRoute
   '/search': typeof SearchRoute
   '/sell': typeof SellRoute
   '/admin/alerts': typeof AdminAlertsRoute
@@ -154,6 +172,8 @@ export interface FileRouteTypes {
     | '/browse'
     | '/dashboard'
     | '/favorites'
+    | '/history'
+    | '/premium'
     | '/search'
     | '/sell'
     | '/admin/alerts'
@@ -170,6 +190,8 @@ export interface FileRouteTypes {
     | '/browse'
     | '/dashboard'
     | '/favorites'
+    | '/history'
+    | '/premium'
     | '/search'
     | '/sell'
     | '/admin/alerts'
@@ -186,6 +208,8 @@ export interface FileRouteTypes {
     | '/browse'
     | '/dashboard'
     | '/favorites'
+    | '/history'
+    | '/premium'
     | '/search'
     | '/sell'
     | '/admin/alerts'
@@ -203,6 +227,8 @@ export interface RootRouteChildren {
   BrowseRoute: typeof BrowseRoute
   DashboardRoute: typeof DashboardRoute
   FavoritesRoute: typeof FavoritesRoute
+  HistoryRoute: typeof HistoryRoute
+  PremiumRoute: typeof PremiumRoute
   SearchRoute: typeof SearchRoute
   SellRoute: typeof SellRoute
   ApiExportRoute: typeof ApiExportRoute
@@ -225,6 +251,20 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/premium': {
+      id: '/premium'
+      path: '/premium'
+      fullPath: '/premium'
+      preLoaderRoute: typeof PremiumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/favorites': {
@@ -333,6 +373,8 @@ const rootRouteChildren: RootRouteChildren = {
   BrowseRoute: BrowseRoute,
   DashboardRoute: DashboardRoute,
   FavoritesRoute: FavoritesRoute,
+  HistoryRoute: HistoryRoute,
+  PremiumRoute: PremiumRoute,
   SearchRoute: SearchRoute,
   SellRoute: SellRoute,
   ApiExportRoute: ApiExportRoute,
