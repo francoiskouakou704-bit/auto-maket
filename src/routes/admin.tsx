@@ -19,7 +19,7 @@ import {
   Search,
 } from "lucide-react";
 import { scanPaymentAlerts, updateAlertStatus } from "@/lib/payment-alerts.functions";
-import { listExportLogs } from "@/lib/admin.functions";
+import { listExportLogs, listExportAlerts, updateExportAlertStatus, runExportAlertCheck } from "@/lib/admin.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
