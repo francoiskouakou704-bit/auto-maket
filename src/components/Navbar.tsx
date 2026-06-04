@@ -17,6 +17,9 @@ export function Navbar() {
       <Link to="/browse" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-smooth">
         <Search className="inline h-4 w-4 mr-1.5" />Rechercher
       </Link>
+      <Link to="/search" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-smooth">
+        <Sparkles className="inline h-4 w-4 mr-1.5" />Recherche IA
+      </Link>
       <Link to="/sell" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-smooth">
         <Sparkles className="inline h-4 w-4 mr-1.5" />Vendre avec l'IA
       </Link>
