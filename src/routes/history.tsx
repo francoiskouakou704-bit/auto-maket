@@ -129,19 +129,19 @@ function HistoryPage() {
 
 function ExportButtons({
   query,
+  historyId,
   synthesis,
-  sources,
 }: {
   query: string;
+  historyId: string;
   synthesis: string;
-  sources: { title: string; url: string }[];
 }) {
   const [busy, setBusy] = useState<"pdf" | "docx" | null>(null);
   const run = async (format: "pdf" | "docx") => {
     if (!synthesis) return toast.error("Aucune synthèse à exporter");
     setBusy(format);
     try {
-      await exportSynthesis({ format, query, synthesis, sources });
+      await exportSynthesis({ format, query, historyId });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
