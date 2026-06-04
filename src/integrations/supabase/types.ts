@@ -47,6 +47,48 @@ export type Database = {
         }
         Relationships: []
       }
+      export_logs: {
+        Row: {
+          created_at: string
+          error: string | null
+          format: string
+          history_id: string | null
+          id: string
+          ip: string | null
+          nonce: string
+          query: string | null
+          success: boolean
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          format: string
+          history_id?: string | null
+          id?: string
+          ip?: string | null
+          nonce: string
+          query?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          format?: string
+          history_id?: string | null
+          id?: string
+          ip?: string | null
+          nonce?: string
+          query?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
