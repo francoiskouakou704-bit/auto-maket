@@ -906,3 +906,211 @@ function ExportAlertsPanel() {
     </Card>
   );
 }
+
+function MitigationControls() {
+  const get = useServerFn(getExportSystemState);
+  const upd = useServerFn(updateExportSystemState);
+  const qc = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ["export-system-state"],
+    queryFn: () => get({}),
+  });
+  const state = data?.state;
+  const [base, setBase] = useState<string>("");
+  const [degraded, setDegraded] = useState<string>("");
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ["export-system-state"] });
+
+  const save = async (patch: Parameters<typeof upd>[0]["data"]) => {
+    try {
+      await upd({ data: patch });
+      toast.success("Mis à jour");
+      refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  if (!state) return null;
+  const isDegraded =
+    !!state.degraded_until && new Date(state.degraded_until).getTime() > Date.now();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5" />
+          Mitigation automatique
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium">Auto-mitigation activée</p>
+            <p className="text-sm text-muted-foreground">
+              Sur dépassement: passage en mode dégradé (rate limit réduit 30 min) et blocage temporaire (1 h) des utilisateurs à l'origine des replays.
+            </p>
+          </div>
+          <Switch
+            checked={state.auto_mitigation_enabled}
+            onCheckedChange={(v) => save({ auto_mitigation_enabled: v })}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium">Rate limit normal (/min)</label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                type="number"
+                min={1}
+                max={1000}
+                defaultValue={state.base_rate_limit_per_min}
+                onChange={(e) => setBase(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                onClick={() =>
+                  save({ base_rate_limit_per_min: Number(base || state.base_rate_limit_per_min) })
+                }
+              >
+                OK
+              </Button>
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Rate limit dégradé (/min)</label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                type="number"
+                min={1}
+                max={1000}
+                defaultValue={state.degraded_rate_limit_per_min}
+                onChange={(e) => setDegraded(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                onClick={() =>
+                  save({
+                    degraded_rate_limit_per_min: Number(
+                      degraded || state.degraded_rate_limit_per_min,
+                    ),
+                  })
+                }
+              >
+                OK
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between rounded-md border p-3">
+          <div>
+            <p className="font-medium flex items-center gap-2">
+              Mode dégradé
+              <Badge variant={isDegraded ? "destructive" : "outline"}>
+                {isDegraded ? "ACTIF" : "Inactif"}
+              </Badge>
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {isDegraded
+                ? `Actif jusqu'à ${new Date(state.degraded_until as string).toLocaleString("fr-FR")}`
+                : "Aucune restriction globale en cours."}
+            </p>
+          </div>
+          {isDegraded && (
+            <Button variant="outline" onClick={() => save({ clear_degraded: true })}>
+              Lever
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ExportUserBlocksPanel() {
+  const list = useServerFn(listExportUserBlocks);
+  const unblock = useServerFn(unblockExportUser);
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["export-user-blocks"],
+    queryFn: () => list({}),
+  });
+
+  const handleUnblock = async (id: string) => {
+    try {
+      await unblock({ data: { id } });
+      toast.success("Utilisateur débloqué");
+      qc.invalidateQueries({ queryKey: ["export-user-blocks"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const blocks = data?.blocks ?? [];
+  const profiles = data?.profiles ?? {};
+  const now = Date.now();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <XCircle className="h-5 w-5" />
+          Utilisateurs bloqués (export)
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Chargement…</p>
+        ) : blocks.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Aucun blocage.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Créé le</TableHead>
+                <TableHead>Utilisateur</TableHead>
+                <TableHead>Raison</TableHead>
+                <TableHead>Expire</TableHead>
+                <TableHead>État</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {blocks.map((b) => {
+                const active = new Date(b.blocked_until).getTime() > now;
+                return (
+                  <TableRow key={b.id}>
+                    <TableCell className="text-xs whitespace-nowrap">
+                      {new Date(b.created_at).toLocaleString("fr-FR")}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {profiles[b.user_id]?.full_name ?? b.user_id.slice(0, 8)}
+                    </TableCell>
+                    <TableCell className="max-w-sm text-sm">{b.reason}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">
+                      {new Date(b.blocked_until).toLocaleString("fr-FR")}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={active ? "destructive" : "outline"}>
+                        {active ? "Actif" : "Expiré"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {active && (
+                        <Button size="sm" variant="outline" onClick={() => handleUnblock(b.id)}>
+                          Débloquer
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
