@@ -116,7 +116,11 @@ function AdminPage() {
         <TabsContent value="reports" className="mt-6"><ReportsPanel /></TabsContent>
         <TabsContent value="alerts" className="mt-6"><AlertsPanel /></TabsContent>
         <TabsContent value="exports" className="mt-6"><ExportLogsPanel /></TabsContent>
-        <TabsContent value="export-alerts" className="mt-6"><ExportAlertsPanel /></TabsContent>
+        <TabsContent value="export-alerts" className="mt-6 space-y-6">
+          <MitigationControls />
+          <ExportAlertsPanel />
+          <ExportUserBlocksPanel />
+        </TabsContent>
       </Tabs>
     </div>
   );
