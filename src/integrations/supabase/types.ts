@@ -47,6 +47,45 @@ export type Database = {
         }
         Relationships: []
       }
+      export_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          kind: string
+          message: string
+          severity: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          kind: string
+          message: string
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          kind?: string
+          message?: string
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       export_logs: {
         Row: {
           created_at: string
@@ -86,6 +125,33 @@ export type Database = {
           success?: boolean
           user_agent?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      export_replay_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          ip: string | null
+          nonce: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip?: string | null
+          nonce: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip?: string | null
+          nonce?: string
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -618,6 +684,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_export_alerts: { Args: never; Returns: undefined }
       count_searches_today: { Args: { _uid: string }; Returns: number }
       get_user_plan: {
         Args: { _uid: string }
