@@ -111,7 +111,11 @@ export const updateExportAlertStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const supabaseAdmin = await assertAdmin(context.userId);
-    const patch: Record<string, unknown> = { status: data.status };
+    const patch: {
+      status: "open" | "acknowledged" | "resolved";
+      acknowledged_by?: string;
+      acknowledged_at?: string;
+    } = { status: data.status };
     if (data.status === "acknowledged") {
       patch.acknowledged_by = context.userId;
       patch.acknowledged_at = new Date().toISOString();
