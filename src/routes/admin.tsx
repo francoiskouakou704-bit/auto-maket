@@ -681,11 +681,11 @@ function ExportLogsPanel() {
           <div className="flex flex-wrap gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
+            <Input
                 placeholder="Recherche (requête, nonce, erreur…)"
                 className="pl-9 w-64"
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); setPage(0); }}
               />
             </div>
             <Select value={success} onValueChange={(v) => { setSuccess(v as typeof success); setPage(0); }}>
@@ -704,8 +704,8 @@ function ExportLogsPanel() {
                 <SelectItem value="docx">Word</SelectItem>
               </SelectContent>
             </Select>
-            <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(0); }} className="w-40" />
-            <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(0); }} className="w-40" />
+            <Input type="date" value={dateFrom} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setDateFrom(e.target.value); setPage(0); }} className="w-40" />
+            <Input type="date" value={dateTo} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setDateTo(e.target.value); setPage(0); }} className="w-40" />
           </div>
         </div>
       </CardHeader>
