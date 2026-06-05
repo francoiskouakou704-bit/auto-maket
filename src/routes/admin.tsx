@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Users,
@@ -30,6 +30,9 @@ import {
   unblockExportUser,
   simulateExportAbuse,
   clearSandboxData,
+  listSandboxPresets,
+  saveSandboxPreset,
+  deleteSandboxPreset,
 } from "@/lib/admin.functions";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -1054,11 +1057,95 @@ function SandboxControls({
 }) {
   const simulate = useServerFn(simulateExportAbuse);
   const clearSb = useServerFn(clearSandboxData);
+  const listPresets = useServerFn(listSandboxPresets);
+  const savePreset = useServerFn(saveSandboxPreset);
+  const delPreset = useServerFn(deleteSandboxPreset);
   const [failures, setFailures] = useState("12");
   const [successes, setSuccesses] = useState("18");
   const [replays, setReplays] = useState("6");
   const [spread, setSpread] = useState("0");
   const [busy, setBusy] = useState(false);
+  const [presets, setPresets] = useState<
+    Array<{
+      id: string;
+      name: string;
+      failures: number;
+      successes: number;
+      replays: number;
+      spread_minutes: number;
+    }>
+  >([]);
+  const [presetName, setPresetName] = useState("");
+
+  const BUILTIN_PRESETS = [
+    { name: "Seuil échec léger (30%)", failures: 12, successes: 28, replays: 0, spread_minutes: 0 },
+    { name: "Seuil échec critique (60%)", failures: 24, successes: 16, replays: 0, spread_minutes: 0 },
+    { name: "Pic de replays", failures: 0, successes: 0, replays: 8, spread_minutes: 0 },
+    { name: "Replays critiques", failures: 0, successes: 0, replays: 25, spread_minutes: 0 },
+    { name: "Sous le seuil (bruit)", failures: 2, successes: 30, replays: 1, spread_minutes: 10 },
+    { name: "Étalé sur 15 min", failures: 18, successes: 22, replays: 6, spread_minutes: 14 },
+  ];
+
+  const refreshPresets = async () => {
+    try {
+      const r = await listPresets({});
+      setPresets((r as { presets: typeof presets }).presets);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    if (enabled) void refreshPresets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
+
+  const applyPreset = (p: {
+    failures: number;
+    successes: number;
+    replays: number;
+    spread_minutes: number;
+  }) => {
+    setFailures(String(p.failures));
+    setSuccesses(String(p.successes));
+    setReplays(String(p.replays));
+    setSpread(String(p.spread_minutes));
+  };
+
+  const handleSavePreset = async () => {
+    const name = presetName.trim();
+    if (!name) {
+      toast.error("Nom du preset requis");
+      return;
+    }
+    try {
+      await savePreset({
+        data: {
+          name,
+          failures: f,
+          successes: s,
+          replays: Number(replays) || 0,
+          spread_minutes: Number(spread) || 0,
+        },
+      });
+      toast.success(`Preset "${name}" enregistré`);
+      setPresetName("");
+      void refreshPresets();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const handleDeletePreset = async (id: string, name: string) => {
+    try {
+      await delPreset({ data: { id } });
+      toast.success(`Preset "${name}" supprimé`);
+      void refreshPresets();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
 
   const f = Number(failures) || 0;
   const s = Number(successes) || 0;
@@ -1123,8 +1210,57 @@ function SandboxControls({
       </div>
 
       {enabled && (
-        <div className="space-y-2">
+        <div className="space-y-3">
+          <div className="rounded border p-2 space-y-2 bg-background/50">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">
+              Presets intégrés
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {BUILTIN_PRESETS.map((p) => (
+                <Button
+                  key={p.name}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => applyPreset(p)}
+                  title={`${p.failures} échecs / ${p.successes} succès / ${p.replays} replays / ${p.spread_minutes} min`}
+                >
+                  {p.name}
+                </Button>
+              ))}
+            </div>
+            {presets.length > 0 && (
+              <>
+                <p className="text-xs font-semibold uppercase text-muted-foreground pt-2">
+                  Mes presets
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {presets.map((p) => (
+                    <span key={p.id} className="inline-flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => applyPreset(p)}
+                        title={`${p.failures}/${p.successes}/${p.replays} • ${p.spread_minutes} min`}
+                      >
+                        {p.name}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeletePreset(p.id, p.name)}
+                        title="Supprimer"
+                      >
+                        ×
+                      </Button>
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+
             <div>
               <label className="text-xs font-medium">Échecs synthétiques</label>
               <Input
@@ -1173,14 +1309,26 @@ function SandboxControls({
             tentatives). Replays : seuil 5 sur 15 min. Fenêtre = étalement aléatoire des
             timestamps dans le passé (0 = instantané).
           </p>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <Button onClick={runSim} disabled={busy} size="sm">
               Injecter & évaluer
             </Button>
             <Button onClick={runClear} disabled={busy} size="sm" variant="outline">
               Nettoyer les données sandbox
             </Button>
+            <div className="flex gap-1 items-center ml-auto">
+              <Input
+                placeholder="Nom du preset"
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                className="h-8 w-44"
+              />
+              <Button onClick={handleSavePreset} size="sm" variant="secondary">
+                Enregistrer preset
+              </Button>
+            </div>
           </div>
+
           <p className="text-xs text-muted-foreground">
             Les lignes synthétiques portent le préfixe <code>sandbox-*</code> et le tag
             <code> [SANDBOX]</code>; elles sont supprimables à tout moment.
