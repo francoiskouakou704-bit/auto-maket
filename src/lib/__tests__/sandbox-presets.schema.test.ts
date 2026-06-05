@@ -198,15 +198,16 @@ describe("saveSandboxPreset – intégration (validator + quota + upsert)", () =
     const upsert = vi.fn().mockResolvedValue({ error: null });
     const select = vi.fn().mockReturnThis();
     const eq = vi.fn().mockResolvedValue({ data: [], error: null });
-    const from = vi.fn(() => ({ select, eq, upsert }));
+    const from = vi.fn((_table: string) => ({ select, eq, upsert }));
 
     // Simulate the body of saveSandboxPreset.handler with mocks.
     const data = validatePresetInput(valid);
     const ownerId = "owner-1";
-    const existing = (await from("export_sandbox_presets").select("id,name").eq("owner_id", ownerId))
-      .data as { name: string }[];
+    const tbl = from("export_sandbox_presets");
+    const existing = ((await tbl.select("id,name").eq("owner_id", ownerId))
+      .data ?? []) as { name: string }[];
     assertPresetQuota(existing, data.name);
-    const res = await from("export_sandbox_presets").upsert(
+    const res = await tbl.upsert(
       { owner_id: ownerId, ...data },
       { onConflict: "owner_id,name" },
     );
