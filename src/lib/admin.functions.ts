@@ -260,50 +260,11 @@ export const unblockExportUser = createServerFn({ method: "POST" })
 
 // ============= Sandbox simulation presets =============
 
-// Strict server-side schema: enforces shape even if client is bypassed.
-// - integers only, bounded ranges
-// - name: trimmed, length 1..60, printable chars only (no control chars,
-//   no leading/trailing whitespace), reserved prefixes forbidden
-// - totals capped to prevent DoS via massive simulations
-// - rejects unknown fields to avoid sneaking arbitrary columns into upsert
-const int = (max: number) =>
-  z
-    .number({ invalid_type_error: "doit être un entier" })
-    .int("doit être un entier")
-    .finite()
-    .min(0)
-    .max(max);
-
-const RESERVED_PREFIXES = ["sandbox-", "[sandbox]", "system:", "__"];
-const MAX_TOTAL_EVENTS = 1200; // failures + successes + replays
-
-const presetSchema = z
-  .object({
-    name: z
-      .string()
-      .transform((s) => s.trim())
-      .pipe(
-        z
-          .string()
-          .min(1, "nom requis")
-          .max(60, "nom trop long (max 60)")
-          // printable: no control chars, no newlines/tabs
-          .regex(/^[^\u0000-\u001F\u007F]+$/, "nom contient des caractères invalides")
-          .refine(
-            (v) => !RESERVED_PREFIXES.some((p) => v.toLowerCase().startsWith(p)),
-            "nom réservé",
-          ),
-      ),
-    failures: int(500),
-    successes: int(500),
-    replays: int(500),
-    spread_minutes: int(180),
-  })
-  .strict()
-  .refine(
-    (v) => v.failures + v.successes + v.replays <= MAX_TOTAL_EVENTS,
-    `total (failures + successes + replays) doit être ≤ ${MAX_TOTAL_EVENTS}`,
-  );
+import {
+  validatePresetInput,
+  assertPresetQuota,
+  MAX_PRESETS_PER_OWNER,
+} from "./sandbox-presets.schema";
 
 export const listSandboxPresets = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -318,35 +279,20 @@ export const listSandboxPresets = createServerFn({ method: "GET" })
     return { presets: data ?? [] };
   });
 
-const MAX_PRESETS_PER_OWNER = 100;
+export { MAX_PRESETS_PER_OWNER };
 
 export const saveSandboxPreset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => {
-    const parsed = presetSchema.safeParse(d);
-    if (!parsed.success) {
-      const msg = parsed.error.issues
-        .map((i) => `${i.path.join(".") || "preset"}: ${i.message}`)
-        .join("; ");
-      throw new Error(`Preset invalide — ${msg}`);
-    }
-    return parsed.data;
-  })
+  .inputValidator((d) => validatePresetInput(d))
   .handler(async ({ data, context }) => {
     const supabaseAdmin = await assertAdmin(context.userId);
 
-    // Enforce per-owner quota: only block when inserting a NEW name.
     const { data: existing, error: exErr } = await supabaseAdmin
       .from("export_sandbox_presets")
-      .select("id,name", { count: "exact" })
+      .select("id,name")
       .eq("owner_id", context.userId);
     if (exErr) throw new Error(exErr.message);
-    const isNew = !(existing ?? []).some((p) => p.name === data.name);
-    if (isNew && (existing?.length ?? 0) >= MAX_PRESETS_PER_OWNER) {
-      throw new Error(
-        `Quota atteint: max ${MAX_PRESETS_PER_OWNER} presets par admin`,
-      );
-    }
+    assertPresetQuota(existing ?? [], data.name);
 
     const { error } = await supabaseAdmin
       .from("export_sandbox_presets")
@@ -364,6 +310,7 @@ export const saveSandboxPreset = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
 
 export const deleteSandboxPreset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
