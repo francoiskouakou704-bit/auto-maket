@@ -758,10 +758,21 @@ export type Database = {
         }
         Returns: boolean
       }
-      simulate_export_abuse: {
-        Args: { _caller: string; _failures?: number; _replays?: number }
-        Returns: Json
-      }
+      simulate_export_abuse:
+        | {
+            Args: { _caller: string; _failures?: number; _replays?: number }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _caller: string
+              _failures?: number
+              _replays?: number
+              _spread_minutes?: number
+              _successes?: number
+            }
+            Returns: Json
+          }
     }
     Enums: {
       app_role: "user" | "dealer" | "admin"
