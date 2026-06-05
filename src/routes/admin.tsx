@@ -1055,16 +1055,31 @@ function SandboxControls({
   const simulate = useServerFn(simulateExportAbuse);
   const clearSb = useServerFn(clearSandboxData);
   const [failures, setFailures] = useState("12");
+  const [successes, setSuccesses] = useState("18");
   const [replays, setReplays] = useState("6");
+  const [spread, setSpread] = useState("0");
   const [busy, setBusy] = useState(false);
+
+  const f = Number(failures) || 0;
+  const s = Number(successes) || 0;
+  const total = f + s;
+  const targetRate = total > 0 ? Math.round((f / total) * 1000) / 10 : null;
 
   const runSim = async () => {
     setBusy(true);
     try {
-      await simulate({
-        data: { failures: Number(failures) || 0, replays: Number(replays) || 0 },
+      const r = await simulate({
+        data: {
+          failures: f,
+          replays: Number(replays) || 0,
+          successes: s,
+          spread_minutes: Number(spread) || 0,
+        },
       });
-      toast.success("Simulation déclenchée");
+      const res = (r as { result: { target_failure_rate: number | null } }).result;
+      toast.success(
+        `Simulation déclenchée${res?.target_failure_rate != null ? ` — taux cible ${Math.round(res.target_failure_rate * 1000) / 10}%` : ""}`,
+      );
       onAfterAction();
     } catch (e) {
       toast.error((e as Error).message);
@@ -1109,15 +1124,25 @@ function SandboxControls({
 
       {enabled && (
         <div className="space-y-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <div>
               <label className="text-xs font-medium">Échecs synthétiques</label>
               <Input
                 type="number"
                 min={0}
-                max={200}
+                max={500}
                 value={failures}
                 onChange={(e) => setFailures(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium">Succès synthétiques</label>
+              <Input
+                type="number"
+                min={0}
+                max={500}
+                value={successes}
+                onChange={(e) => setSuccesses(e.target.value)}
               />
             </div>
             <div>
@@ -1125,12 +1150,29 @@ function SandboxControls({
               <Input
                 type="number"
                 min={0}
-                max={200}
+                max={500}
                 value={replays}
                 onChange={(e) => setReplays(e.target.value)}
               />
             </div>
+            <div>
+              <label className="text-xs font-medium">Fenêtre (min)</label>
+              <Input
+                type="number"
+                min={0}
+                max={180}
+                value={spread}
+                onChange={(e) => setSpread(e.target.value)}
+              />
+            </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Taux d'échec cible :{" "}
+            <strong>{targetRate != null ? `${targetRate}%` : "—"}</strong>{" "}
+            ({f} échecs / {total} tentatives). Seuil d'alerte : 30% sur 15 min (min. 10
+            tentatives). Replays : seuil 5 sur 15 min. Fenêtre = étalement aléatoire des
+            timestamps dans le passé (0 = instantané).
+          </p>
           <div className="flex gap-2 flex-wrap">
             <Button onClick={runSim} disabled={busy} size="sm">
               Injecter & évaluer
@@ -1148,6 +1190,7 @@ function SandboxControls({
     </div>
   );
 }
+
 
 function ExportUserBlocksPanel() {
   const list = useServerFn(listExportUserBlocks);
