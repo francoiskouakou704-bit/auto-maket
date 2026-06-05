@@ -191,8 +191,10 @@ export const simulateExportAbuse = createServerFn({ method: "POST" })
   .inputValidator((d) =>
     z
       .object({
-        failures: z.number().int().min(0).max(200).optional(),
-        replays: z.number().int().min(0).max(200).optional(),
+        failures: z.number().int().min(0).max(500).optional(),
+        replays: z.number().int().min(0).max(500).optional(),
+        successes: z.number().int().min(0).max(500).optional(),
+        spread_minutes: z.number().int().min(0).max(180).optional(),
       })
       .parse(d ?? {})
   )
@@ -202,10 +204,13 @@ export const simulateExportAbuse = createServerFn({ method: "POST" })
       _caller: context.userId,
       _failures: data.failures ?? 12,
       _replays: data.replays ?? 6,
+      _successes: data.successes ?? 0,
+      _spread_minutes: data.spread_minutes ?? 0,
     });
     if (error) throw new Error(error.message);
     return { result };
   });
+
 
 export const clearSandboxData = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
