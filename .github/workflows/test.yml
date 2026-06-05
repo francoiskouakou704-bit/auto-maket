@@ -33,7 +33,7 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
-          jq -r 'to_entries[] | select(.key != "total") | "| \(.key | ascii_upcase) | \(.value.pct)% |"' coverage/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
+          jq -r 'to_entries[] | select(.key != "total") | "| \(.key | ascii_upcase) | \(.value.lines.pct)% |"' coverage/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
           TOTAL=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
           echo "| **TOTAL** | **${TOTAL}%** |" >> "$GITHUB_STEP_SUMMARY"
           echo ""
