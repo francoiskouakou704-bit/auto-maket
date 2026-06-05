@@ -27,6 +27,28 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
+      - name: Publish coverage summary
+        run: |
+          echo "## Coverage Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          jq -r 'to_entries[] | select(.key != "total") | "| \(.key | ascii_upcase) | \(.value.lines.pct)% |"' coverage/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
+          TOTAL=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
+          echo "| **TOTAL** | **${TOTAL}%** |" >> "$GITHUB_STEP_SUMMARY"
+          echo ""
+          echo "Coverage total lines: ${TOTAL}%"
+          echo "COVERAGE_TOTAL=${TOTAL}" >> "$GITHUB_ENV"
+          if (( $(echo "$TOTAL >= 80" | bc -l) )); then
+            echo "COVERAGE_COLOR=brightgreen" >> "$GITHUB_ENV"
+          elif (( $(echo "$TOTAL >= 60" | bc -l) )); then
+            echo "COVERAGE_COLOR=green" >> "$GITHUB_ENV"
+          elif (( $(echo "$TOTAL >= 40" | bc -l) )); then
+            echo "COVERAGE_COLOR=yellow" >> "$GITHUB_ENV"
+          else
+            echo "COVERAGE_COLOR=red" >> "$GITHUB_ENV"
+          fi
+
       - name: Upload coverage HTML report
         uses: actions/upload-artifact@v4
         with:
