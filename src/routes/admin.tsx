@@ -1032,8 +1032,120 @@ function MitigationControls() {
             </Button>
           )}
         </div>
+
+        <SandboxControls
+          enabled={!!(state as { sandbox_mode?: boolean }).sandbox_mode}
+          onToggle={(v) => save({ sandbox_mode: v })}
+          onAfterAction={refresh}
+        />
       </CardContent>
     </Card>
+  );
+}
+
+function SandboxControls({
+  enabled,
+  onToggle,
+  onAfterAction,
+}: {
+  enabled: boolean;
+  onToggle: (v: boolean) => void;
+  onAfterAction: () => void;
+}) {
+  const simulate = useServerFn(simulateExportAbuse);
+  const clearSb = useServerFn(clearSandboxData);
+  const [failures, setFailures] = useState("12");
+  const [replays, setReplays] = useState("6");
+  const [busy, setBusy] = useState(false);
+
+  const runSim = async () => {
+    setBusy(true);
+    try {
+      await simulate({
+        data: { failures: Number(failures) || 0, replays: Number(replays) || 0 },
+      });
+      toast.success("Simulation déclenchée");
+      onAfterAction();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runClear = async () => {
+    setBusy(true);
+    try {
+      const r = await clearSb({});
+      toast.success(
+        `Sandbox nettoyée (logs: ${(r as { result: { logs: number } }).result.logs}, replays: ${(r as { result: { replays: number } }).result.replays}, alertes: ${(r as { result: { alerts: number } }).result.alerts})`,
+      );
+      onAfterAction();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="rounded-md border p-3 space-y-3 bg-muted/30">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-medium flex items-center gap-2">
+            Mode bac à sable (test)
+            <Badge variant={enabled ? "default" : "outline"}>
+              {enabled ? "ACTIF" : "Inactif"}
+            </Badge>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Lorsque actif, les seuils déclenchent des alertes marquées <code>[SANDBOX]</code> mais
+            n'appliquent ni mode dégradé réel, ni blocage d'utilisateurs. Permet de valider les
+            mitigations et la journalisation sans impact production.
+          </p>
+        </div>
+        <Switch checked={enabled} onCheckedChange={onToggle} />
+      </div>
+
+      {enabled && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-medium">Échecs synthétiques</label>
+              <Input
+                type="number"
+                min={0}
+                max={200}
+                value={failures}
+                onChange={(e) => setFailures(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium">Replays synthétiques</label>
+              <Input
+                type="number"
+                min={0}
+                max={200}
+                value={replays}
+                onChange={(e) => setReplays(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={runSim} disabled={busy} size="sm">
+              Injecter & évaluer
+            </Button>
+            <Button onClick={runClear} disabled={busy} size="sm" variant="outline">
+              Nettoyer les données sandbox
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Les lignes synthétiques portent le préfixe <code>sandbox-*</code> et le tag
+            <code> [SANDBOX]</code>; elles sont supprimables à tout moment.
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 
