@@ -159,6 +159,7 @@ export const updateExportSystemState = createServerFn({ method: "POST" })
         base_rate_limit_per_min: z.number().int().min(1).max(1000).optional(),
         degraded_rate_limit_per_min: z.number().int().min(1).max(1000).optional(),
         clear_degraded: z.boolean().optional(),
+        sandbox_mode: z.boolean().optional(),
       })
       .parse(d)
   )
@@ -169,18 +170,52 @@ export const updateExportSystemState = createServerFn({ method: "POST" })
       base_rate_limit_per_min?: number;
       degraded_rate_limit_per_min?: number;
       degraded_until?: string | null;
+      sandbox_mode?: boolean;
       updated_at: string;
     } = { updated_at: new Date().toISOString() };
     if (data.auto_mitigation_enabled !== undefined) patch.auto_mitigation_enabled = data.auto_mitigation_enabled;
     if (data.base_rate_limit_per_min !== undefined) patch.base_rate_limit_per_min = data.base_rate_limit_per_min;
     if (data.degraded_rate_limit_per_min !== undefined) patch.degraded_rate_limit_per_min = data.degraded_rate_limit_per_min;
     if (data.clear_degraded) patch.degraded_until = null;
+    if (data.sandbox_mode !== undefined) patch.sandbox_mode = data.sandbox_mode;
     const { error } = await supabaseAdmin
       .from("export_system_state")
       .update(patch)
       .eq("id", true);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+export const simulateExportAbuse = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        failures: z.number().int().min(0).max(200).optional(),
+        replays: z.number().int().min(0).max(200).optional(),
+      })
+      .parse(d ?? {})
+  )
+  .handler(async ({ data, context }) => {
+    const supabaseAdmin = await assertAdmin(context.userId);
+    const { data: result, error } = await supabaseAdmin.rpc("simulate_export_abuse", {
+      _caller: context.userId,
+      _failures: data.failures ?? 12,
+      _replays: data.replays ?? 6,
+    });
+    if (error) throw new Error(error.message);
+    return { result };
+  });
+
+export const clearSandboxData = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const supabaseAdmin = await assertAdmin(context.userId);
+    const { data: result, error } = await supabaseAdmin.rpc("clear_sandbox_data", {
+      _caller: context.userId,
+    });
+    if (error) throw new Error(error.message);
+    return { result };
   });
 
 export const listExportUserBlocks = createServerFn({ method: "GET" })

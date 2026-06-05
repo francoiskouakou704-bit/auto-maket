@@ -165,6 +165,7 @@ export type Database = {
           degraded_rate_limit_per_min: number
           degraded_until: string | null
           id: boolean
+          sandbox_mode: boolean
           updated_at: string
         }
         Insert: {
@@ -173,6 +174,7 @@ export type Database = {
           degraded_rate_limit_per_min?: number
           degraded_until?: string | null
           id?: boolean
+          sandbox_mode?: boolean
           updated_at?: string
         }
         Update: {
@@ -181,6 +183,7 @@ export type Database = {
           degraded_rate_limit_per_min?: number
           degraded_until?: string | null
           id?: boolean
+          sandbox_mode?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -742,6 +745,7 @@ export type Database = {
     }
     Functions: {
       check_export_alerts: { Args: never; Returns: undefined }
+      clear_sandbox_data: { Args: { _caller: string }; Returns: Json }
       count_searches_today: { Args: { _uid: string }; Returns: number }
       get_user_plan: {
         Args: { _uid: string }
@@ -753,6 +757,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      simulate_export_abuse: {
+        Args: { _caller: string; _failures?: number; _replays?: number }
+        Returns: Json
       }
     }
     Enums: {
