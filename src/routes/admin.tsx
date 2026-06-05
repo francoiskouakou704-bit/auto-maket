@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import {
   Users,
@@ -1146,6 +1146,94 @@ function SandboxControls({
     }
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const clamp = (n: unknown, max: number) => {
+    const v = Math.floor(Number(n));
+    if (!Number.isFinite(v) || v < 0) return 0;
+    return Math.min(v, max);
+  };
+
+  const parseCSV = (text: string) => {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    if (lines.length < 2) return [];
+    const splitLine = (l: string) =>
+      l.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+    const headers = splitLine(lines[0]).map((h) => h.toLowerCase());
+    const iName = headers.indexOf("name");
+    if (iName < 0) throw new Error("Colonne 'name' manquante");
+    const get = (cells: string[], k: string) => {
+      const i = headers.indexOf(k);
+      return i >= 0 ? cells[i] : 0;
+    };
+    return lines.slice(1).map((l) => {
+      const cells = splitLine(l);
+      return {
+        name: cells[iName] ?? "",
+        failures: get(cells, "failures"),
+        successes: get(cells, "successes"),
+        replays: get(cells, "replays"),
+        spread_minutes: get(cells, "spread_minutes"),
+      };
+    });
+  };
+
+  const handleImportFile = async (file: File) => {
+    setBusy(true);
+    try {
+      const text = await file.text();
+      let raw: Array<Record<string, unknown>> = [];
+      const trimmed = text.trim();
+      const isJson =
+        file.name.toLowerCase().endsWith(".json") ||
+        trimmed.startsWith("[") ||
+        trimmed.startsWith("{");
+      if (isJson) {
+        const parsed = JSON.parse(text);
+        const arr = Array.isArray(parsed)
+          ? parsed
+          : Array.isArray((parsed as { presets?: unknown }).presets)
+            ? (parsed as { presets: Array<Record<string, unknown>> }).presets
+            : null;
+        if (!arr) throw new Error("JSON invalide: tableau attendu");
+        raw = arr as Array<Record<string, unknown>>;
+      } else {
+        raw = parseCSV(text) as unknown as Array<Record<string, unknown>>;
+      }
+
+      const items = raw
+        .map((p) => ({
+          name: String(p.name ?? "").trim().slice(0, 60),
+          failures: clamp(p.failures, 500),
+          successes: clamp(p.successes, 500),
+          replays: clamp(p.replays, 500),
+          spread_minutes: clamp(p.spread_minutes, 180),
+        }))
+        .filter((p) => p.name.length > 0);
+
+      if (items.length === 0) throw new Error("Aucun preset valide trouvé");
+
+      let ok = 0;
+      let ko = 0;
+      for (const it of items) {
+        try {
+          await savePreset({ data: it });
+          ok++;
+        } catch {
+          ko++;
+        }
+      }
+      toast.success(
+        `Import: ${ok} preset(s) chargé(s)${ko ? `, ${ko} échec(s)` : ""}`,
+      );
+      void refreshPresets();
+    } catch (e) {
+      toast.error(`Import échoué: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
 
   const f = Number(failures) || 0;
   const s = Number(successes) || 0;
@@ -1315,6 +1403,25 @@ function SandboxControls({
             </Button>
             <Button onClick={runClear} disabled={busy} size="sm" variant="outline">
               Nettoyer les données sandbox
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,.csv,application/json,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleImportFile(file);
+              }}
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={busy}
+              size="sm"
+              variant="outline"
+              title="Importer des presets depuis un fichier JSON ou CSV (colonnes: name, failures, successes, replays, spread_minutes)"
+            >
+              Importer presets (JSON/CSV)
             </Button>
             <div className="flex gap-1 items-center ml-auto">
               <Input
