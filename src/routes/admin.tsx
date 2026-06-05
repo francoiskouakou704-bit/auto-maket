@@ -4,6 +4,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Users,
   Car,
   CreditCard,
@@ -1147,11 +1155,6 @@ function SandboxControls({
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const clamp = (n: unknown, max: number) => {
-    const v = Math.floor(Number(n));
-    if (!Number.isFinite(v) || v < 0) return 0;
-    return Math.min(v, max);
-  };
 
   const parseCSV = (text: string) => {
     const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
@@ -1177,8 +1180,93 @@ function SandboxControls({
     });
   };
 
+  type PreviewRow = {
+    rowIndex: number;
+    original: Record<string, unknown>;
+    parsed: {
+      name: string;
+      failures: number;
+      successes: number;
+      replays: number;
+      spread_minutes: number;
+    };
+    warnings: string[];
+    errors: string[];
+  };
+
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
+  const [previewFileName, setPreviewFileName] = useState("");
+  const [previewFatal, setPreviewFatal] = useState<string | null>(null);
+
+  const numericFields: Array<{
+    key: "failures" | "successes" | "replays" | "spread_minutes";
+    max: number;
+  }> = [
+    { key: "failures", max: 500 },
+    { key: "successes", max: 500 },
+    { key: "replays", max: 500 },
+    { key: "spread_minutes", max: 180 },
+  ];
+
+  const buildPreviewRow = (
+    raw: Record<string, unknown>,
+    rowIndex: number,
+  ): PreviewRow => {
+    const warnings: string[] = [];
+    const errors: string[] = [];
+
+    const rawName = String(raw.name ?? "").trim();
+    if (!rawName) errors.push("nom manquant");
+    let name = rawName;
+    if (name.length > 60) {
+      warnings.push(`nom tronqué à 60 caractères`);
+      name = name.slice(0, 60);
+    }
+
+    const parsedNums: Record<string, number> = {};
+    for (const { key, max } of numericFields) {
+      const original = raw[key];
+      const num = Math.floor(Number(original));
+      if (original === undefined || original === null || original === "") {
+        parsedNums[key] = 0;
+      } else if (!Number.isFinite(num)) {
+        errors.push(`${key}: valeur non numérique`);
+        parsedNums[key] = 0;
+      } else {
+        let v = num;
+        if (v < 0) {
+          warnings.push(`${key}: négatif, ramené à 0`);
+          v = 0;
+        }
+        if (v > max) {
+          warnings.push(`${key}: ${v} clampé à ${max}`);
+          v = max;
+        }
+        parsedNums[key] = v;
+      }
+    }
+
+    return {
+      rowIndex,
+      original: raw,
+      parsed: {
+        name,
+        failures: parsedNums.failures,
+        successes: parsedNums.successes,
+        replays: parsedNums.replays,
+        spread_minutes: parsedNums.spread_minutes,
+      },
+      warnings,
+      errors,
+    };
+  };
+
   const handleImportFile = async (file: File) => {
-    setBusy(true);
+    setPreviewFileName(file.name);
+    setPreviewFatal(null);
+    setPreviewRows([]);
+    setPreviewOpen(true);
     try {
       const text = await file.text();
       let raw: Array<Record<string, unknown>> = [];
@@ -1199,24 +1287,46 @@ function SandboxControls({
       } else {
         raw = parseCSV(text) as unknown as Array<Record<string, unknown>>;
       }
+      if (raw.length === 0) throw new Error("Fichier vide");
 
-      const items = raw
-        .map((p) => ({
-          name: String(p.name ?? "").trim().slice(0, 60),
-          failures: clamp(p.failures, 500),
-          successes: clamp(p.successes, 500),
-          replays: clamp(p.replays, 500),
-          spread_minutes: clamp(p.spread_minutes, 180),
-        }))
-        .filter((p) => p.name.length > 0);
+      const rows = raw.map((r, i) => buildPreviewRow(r, i + 1));
 
-      if (items.length === 0) throw new Error("Aucun preset valide trouvé");
+      // Detect duplicate names within file
+      const seen = new Map<string, number[]>();
+      rows.forEach((r) => {
+        if (!r.parsed.name) return;
+        const arr = seen.get(r.parsed.name) ?? [];
+        arr.push(r.rowIndex);
+        seen.set(r.parsed.name, arr);
+      });
+      rows.forEach((r) => {
+        const idxs = seen.get(r.parsed.name);
+        if (idxs && idxs.length > 1) {
+          r.warnings.push(`doublon de nom (lignes ${idxs.join(", ")})`);
+        }
+      });
 
+      setPreviewRows(rows);
+    } catch (e) {
+      setPreviewFatal((e as Error).message);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const confirmImport = async () => {
+    const valid = previewRows.filter((r) => r.errors.length === 0);
+    if (valid.length === 0) {
+      toast.error("Aucune ligne valide à importer");
+      return;
+    }
+    setBusy(true);
+    try {
       let ok = 0;
       let ko = 0;
-      for (const it of items) {
+      for (const r of valid) {
         try {
-          await savePreset({ data: it });
+          await savePreset({ data: r.parsed });
           ok++;
         } catch {
           ko++;
@@ -1226,11 +1336,10 @@ function SandboxControls({
         `Import: ${ok} preset(s) chargé(s)${ko ? `, ${ko} échec(s)` : ""}`,
       );
       void refreshPresets();
-    } catch (e) {
-      toast.error(`Import échoué: ${(e as Error).message}`);
+      setPreviewOpen(false);
+      setPreviewRows([]);
     } finally {
       setBusy(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -1442,6 +1551,110 @@ function SandboxControls({
           </p>
         </div>
       )}
+
+      <Dialog open={previewOpen} onOpenChange={(o) => !busy && setPreviewOpen(o)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Aperçu de l'import — {previewFileName}</DialogTitle>
+            <DialogDescription>
+              Vérifiez les lignes parsées, les valeurs clampées et les erreurs
+              avant d'enregistrer les presets.
+            </DialogDescription>
+          </DialogHeader>
+
+          {previewFatal ? (
+            <div className="text-sm text-destructive border border-destructive/30 rounded p-3">
+              Erreur de parsing: {previewFatal}
+            </div>
+          ) : (
+            <>
+              <div className="text-xs text-muted-foreground flex gap-4">
+                <span>{previewRows.length} ligne(s)</span>
+                <span className="text-green-600">
+                  {previewRows.filter((r) => r.errors.length === 0).length} valide(s)
+                </span>
+                <span className="text-amber-600">
+                  {previewRows.filter((r) => r.warnings.length > 0).length} avec avertissement(s)
+                </span>
+                <span className="text-destructive">
+                  {previewRows.filter((r) => r.errors.length > 0).length} en erreur
+                </span>
+              </div>
+              <div className="max-h-[50vh] overflow-auto border rounded">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted sticky top-0">
+                    <tr className="text-left">
+                      <th className="p-2">#</th>
+                      <th className="p-2">Nom</th>
+                      <th className="p-2">Fail</th>
+                      <th className="p-2">Succ</th>
+                      <th className="p-2">Replays</th>
+                      <th className="p-2">Spread</th>
+                      <th className="p-2">État</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewRows.map((r) => (
+                      <tr
+                        key={r.rowIndex}
+                        className={
+                          r.errors.length
+                            ? "bg-destructive/5 border-t"
+                            : r.warnings.length
+                              ? "bg-amber-500/5 border-t"
+                              : "border-t"
+                        }
+                      >
+                        <td className="p-2 text-muted-foreground">{r.rowIndex}</td>
+                        <td className="p-2 font-medium">{r.parsed.name || <span className="text-destructive">—</span>}</td>
+                        <td className="p-2">{r.parsed.failures}</td>
+                        <td className="p-2">{r.parsed.successes}</td>
+                        <td className="p-2">{r.parsed.replays}</td>
+                        <td className="p-2">{r.parsed.spread_minutes}</td>
+                        <td className="p-2">
+                          {r.errors.length > 0 && (
+                            <div className="text-destructive">
+                              {r.errors.join(" · ")}
+                            </div>
+                          )}
+                          {r.warnings.length > 0 && (
+                            <div className="text-amber-600">
+                              {r.warnings.join(" · ")}
+                            </div>
+                          )}
+                          {r.errors.length === 0 && r.warnings.length === 0 && (
+                            <span className="text-green-600">ok</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPreviewOpen(false)}
+              disabled={busy}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={confirmImport}
+              disabled={
+                busy ||
+                !!previewFatal ||
+                previewRows.filter((r) => r.errors.length === 0).length === 0
+              }
+            >
+              Importer {previewRows.filter((r) => r.errors.length === 0).length} preset(s)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
