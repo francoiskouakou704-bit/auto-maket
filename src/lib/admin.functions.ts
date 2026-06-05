@@ -262,9 +262,9 @@ export const unblockExportUser = createServerFn({ method: "POST" })
 
 import {
   validatePresetInput,
-  assertPresetQuota,
   MAX_PRESETS_PER_OWNER,
 } from "./sandbox-presets.schema";
+import { upsertSandboxPreset } from "./sandbox-presets.core";
 
 export const listSandboxPresets = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -286,30 +286,10 @@ export const saveSandboxPreset = createServerFn({ method: "POST" })
   .inputValidator((d) => validatePresetInput(d))
   .handler(async ({ data, context }) => {
     const supabaseAdmin = await assertAdmin(context.userId);
-
-    const { data: existing, error: exErr } = await supabaseAdmin
-      .from("export_sandbox_presets")
-      .select("id,name")
-      .eq("owner_id", context.userId);
-    if (exErr) throw new Error(exErr.message);
-    assertPresetQuota(existing ?? [], data.name);
-
-    const { error } = await supabaseAdmin
-      .from("export_sandbox_presets")
-      .upsert(
-        {
-          owner_id: context.userId,
-          name: data.name,
-          failures: data.failures,
-          successes: data.successes,
-          replays: data.replays,
-          spread_minutes: data.spread_minutes,
-        },
-        { onConflict: "owner_id,name" },
-      );
-    if (error) throw new Error(error.message);
+    await upsertSandboxPreset(supabaseAdmin, context.userId, data);
     return { ok: true };
   });
+
 
 
 export const deleteSandboxPreset = createServerFn({ method: "POST" })
