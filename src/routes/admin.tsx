@@ -1155,11 +1155,6 @@ function SandboxControls({
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const clamp = (n: unknown, max: number) => {
-    const v = Math.floor(Number(n));
-    if (!Number.isFinite(v) || v < 0) return 0;
-    return Math.min(v, max);
-  };
 
   const parseCSV = (text: string) => {
     const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
