@@ -257,3 +257,55 @@ export const unblockExportUser = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ============= Sandbox simulation presets =============
+
+const presetSchema = z.object({
+  name: z.string().min(1).max(60),
+  failures: z.number().int().min(0).max(500),
+  successes: z.number().int().min(0).max(500),
+  replays: z.number().int().min(0).max(500),
+  spread_minutes: z.number().int().min(0).max(180),
+});
+
+export const listSandboxPresets = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const supabaseAdmin = await assertAdmin(context.userId);
+    const { data, error } = await supabaseAdmin
+      .from("export_sandbox_presets")
+      .select("*")
+      .eq("owner_id", context.userId)
+      .order("name", { ascending: true });
+    if (error) throw new Error(error.message);
+    return { presets: data ?? [] };
+  });
+
+export const saveSandboxPreset = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => presetSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const supabaseAdmin = await assertAdmin(context.userId);
+    const { error } = await supabaseAdmin
+      .from("export_sandbox_presets")
+      .upsert(
+        { owner_id: context.userId, ...data },
+        { onConflict: "owner_id,name" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteSandboxPreset = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const supabaseAdmin = await assertAdmin(context.userId);
+    const { error } = await supabaseAdmin
+      .from("export_sandbox_presets")
+      .delete()
+      .eq("id", data.id)
+      .eq("owner_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
