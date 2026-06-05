@@ -921,7 +921,13 @@ function MitigationControls() {
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["export-system-state"] });
 
-  const save = async (patch: Parameters<typeof updateExportSystemState>[0]["data"]) => {
+  const save = async (patch: {
+    auto_mitigation_enabled?: boolean;
+    base_rate_limit_per_min?: number;
+    degraded_rate_limit_per_min?: number;
+    clear_degraded?: boolean;
+    sandbox_mode?: boolean;
+  }) => {
     try {
       await upd({ data: patch });
       toast.success("Mis à jour");
