@@ -1146,7 +1146,7 @@ function SandboxControls({
     }
   };
 
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const clamp = (n: unknown, max: number) => {
     const v = Math.floor(Number(n));
     if (!Number.isFinite(v) || v < 0) return 0;
