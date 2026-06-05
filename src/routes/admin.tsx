@@ -1210,8 +1210,57 @@ function SandboxControls({
       </div>
 
       {enabled && (
-        <div className="space-y-2">
+        <div className="space-y-3">
+          <div className="rounded border p-2 space-y-2 bg-background/50">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">
+              Presets intégrés
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {BUILTIN_PRESETS.map((p) => (
+                <Button
+                  key={p.name}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => applyPreset(p)}
+                  title={`${p.failures} échecs / ${p.successes} succès / ${p.replays} replays / ${p.spread_minutes} min`}
+                >
+                  {p.name}
+                </Button>
+              ))}
+            </div>
+            {presets.length > 0 && (
+              <>
+                <p className="text-xs font-semibold uppercase text-muted-foreground pt-2">
+                  Mes presets
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {presets.map((p) => (
+                    <span key={p.id} className="inline-flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => applyPreset(p)}
+                        title={`${p.failures}/${p.successes}/${p.replays} • ${p.spread_minutes} min`}
+                      >
+                        {p.name}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeletePreset(p.id, p.name)}
+                        title="Supprimer"
+                      >
+                        ×
+                      </Button>
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+
             <div>
               <label className="text-xs font-medium">Échecs synthétiques</label>
               <Input
