@@ -74,6 +74,7 @@ jobs:
             const marker = '<!-- coverage-report-comment -->';
             const sha = '${{ steps.coverage_vars.outputs.commit_sha }}'.substring(0, 7);
             const date = '${{ steps.coverage_vars.outputs.commit_date }}';
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
             const body = `${marker}
             ## 📊 Coverage Report
 
@@ -86,9 +87,9 @@ jobs:
             | Functions   | ${t.functions.covered}   | ${t.functions.total}   | ${t.functions.pct}% |
             | Branches    | ${t.branches.covered}    | ${t.branches.total}    | ${t.branches.pct}% |
 
-            <sub>Commit: \`${sha}\` — ${date}</sub>
+            🔗 [Ouvrir le rapport HTML complet](${runUrl}) (artefact \`coverage-report\`)
 
-            _Full HTML report available in the workflow artifacts (\`coverage-report\`)._`;
+            <sub>Commit: \`${sha}\` — ${date}</sub>`;
 
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
