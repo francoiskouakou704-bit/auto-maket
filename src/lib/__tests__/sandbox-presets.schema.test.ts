@@ -235,9 +235,9 @@ describe("saveSandboxPreset – intégration (validator + quota + upsert)", () =
   });
 
   it("propage l'erreur Supabase si upsert échoue", async () => {
-    const upsert = vi.fn().mockResolvedValue({
-      error: { message: "duplicate key" },
-    });
+    const upsert = vi
+      .fn<(...args: unknown[]) => Promise<{ error: { message: string } | null }>>()
+      .mockResolvedValue({ error: { message: "duplicate key" } });
     const res = await upsert({}, { onConflict: "owner_id,name" });
     expect(res.error?.message).toBe("duplicate key");
   });
