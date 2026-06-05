@@ -158,6 +158,42 @@ export type Database = {
         }
         Relationships: []
       }
+      export_sandbox_presets: {
+        Row: {
+          created_at: string
+          failures: number
+          id: string
+          name: string
+          owner_id: string
+          replays: number
+          spread_minutes: number
+          successes: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          failures?: number
+          id?: string
+          name: string
+          owner_id: string
+          replays?: number
+          spread_minutes?: number
+          successes?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          failures?: number
+          id?: string
+          name?: string
+          owner_id?: string
+          replays?: number
+          spread_minutes?: number
+          successes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       export_system_state: {
         Row: {
           auto_mitigation_enabled: boolean
