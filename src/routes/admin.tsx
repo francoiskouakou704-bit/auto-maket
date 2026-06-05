@@ -1309,14 +1309,26 @@ function SandboxControls({
             tentatives). Replays : seuil 5 sur 15 min. Fenêtre = étalement aléatoire des
             timestamps dans le passé (0 = instantané).
           </p>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <Button onClick={runSim} disabled={busy} size="sm">
               Injecter & évaluer
             </Button>
             <Button onClick={runClear} disabled={busy} size="sm" variant="outline">
               Nettoyer les données sandbox
             </Button>
+            <div className="flex gap-1 items-center ml-auto">
+              <Input
+                placeholder="Nom du preset"
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                className="h-8 w-44"
+              />
+              <Button onClick={handleSavePreset} size="sm" variant="secondary">
+                Enregistrer preset
+              </Button>
+            </div>
           </div>
+
           <p className="text-xs text-muted-foreground">
             Les lignes synthétiques portent le préfixe <code>sandbox-*</code> et le tag
             <code> [SANDBOX]</code>; elles sont supprimables à tout moment.
