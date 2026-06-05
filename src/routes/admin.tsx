@@ -1057,11 +1057,95 @@ function SandboxControls({
 }) {
   const simulate = useServerFn(simulateExportAbuse);
   const clearSb = useServerFn(clearSandboxData);
+  const listPresets = useServerFn(listSandboxPresets);
+  const savePreset = useServerFn(saveSandboxPreset);
+  const delPreset = useServerFn(deleteSandboxPreset);
   const [failures, setFailures] = useState("12");
   const [successes, setSuccesses] = useState("18");
   const [replays, setReplays] = useState("6");
   const [spread, setSpread] = useState("0");
   const [busy, setBusy] = useState(false);
+  const [presets, setPresets] = useState<
+    Array<{
+      id: string;
+      name: string;
+      failures: number;
+      successes: number;
+      replays: number;
+      spread_minutes: number;
+    }>
+  >([]);
+  const [presetName, setPresetName] = useState("");
+
+  const BUILTIN_PRESETS = [
+    { name: "Seuil échec léger (30%)", failures: 12, successes: 28, replays: 0, spread_minutes: 0 },
+    { name: "Seuil échec critique (60%)", failures: 24, successes: 16, replays: 0, spread_minutes: 0 },
+    { name: "Pic de replays", failures: 0, successes: 0, replays: 8, spread_minutes: 0 },
+    { name: "Replays critiques", failures: 0, successes: 0, replays: 25, spread_minutes: 0 },
+    { name: "Sous le seuil (bruit)", failures: 2, successes: 30, replays: 1, spread_minutes: 10 },
+    { name: "Étalé sur 15 min", failures: 18, successes: 22, replays: 6, spread_minutes: 14 },
+  ];
+
+  const refreshPresets = async () => {
+    try {
+      const r = await listPresets({});
+      setPresets((r as { presets: typeof presets }).presets);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    if (enabled) void refreshPresets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
+
+  const applyPreset = (p: {
+    failures: number;
+    successes: number;
+    replays: number;
+    spread_minutes: number;
+  }) => {
+    setFailures(String(p.failures));
+    setSuccesses(String(p.successes));
+    setReplays(String(p.replays));
+    setSpread(String(p.spread_minutes));
+  };
+
+  const handleSavePreset = async () => {
+    const name = presetName.trim();
+    if (!name) {
+      toast.error("Nom du preset requis");
+      return;
+    }
+    try {
+      await savePreset({
+        data: {
+          name,
+          failures: f,
+          successes: s,
+          replays: Number(replays) || 0,
+          spread_minutes: Number(spread) || 0,
+        },
+      });
+      toast.success(`Preset "${name}" enregistré`);
+      setPresetName("");
+      void refreshPresets();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const handleDeletePreset = async (id: string, name: string) => {
+    try {
+      await delPreset({ data: { id } });
+      toast.success(`Preset "${name}" supprimé`);
+      void refreshPresets();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
 
   const f = Number(failures) || 0;
   const s = Number(successes) || 0;
