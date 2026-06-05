@@ -1551,6 +1551,110 @@ function SandboxControls({
           </p>
         </div>
       )}
+
+      <Dialog open={previewOpen} onOpenChange={(o) => !busy && setPreviewOpen(o)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Aperçu de l'import — {previewFileName}</DialogTitle>
+            <DialogDescription>
+              Vérifiez les lignes parsées, les valeurs clampées et les erreurs
+              avant d'enregistrer les presets.
+            </DialogDescription>
+          </DialogHeader>
+
+          {previewFatal ? (
+            <div className="text-sm text-destructive border border-destructive/30 rounded p-3">
+              Erreur de parsing: {previewFatal}
+            </div>
+          ) : (
+            <>
+              <div className="text-xs text-muted-foreground flex gap-4">
+                <span>{previewRows.length} ligne(s)</span>
+                <span className="text-green-600">
+                  {previewRows.filter((r) => r.errors.length === 0).length} valide(s)
+                </span>
+                <span className="text-amber-600">
+                  {previewRows.filter((r) => r.warnings.length > 0).length} avec avertissement(s)
+                </span>
+                <span className="text-destructive">
+                  {previewRows.filter((r) => r.errors.length > 0).length} en erreur
+                </span>
+              </div>
+              <div className="max-h-[50vh] overflow-auto border rounded">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted sticky top-0">
+                    <tr className="text-left">
+                      <th className="p-2">#</th>
+                      <th className="p-2">Nom</th>
+                      <th className="p-2">Fail</th>
+                      <th className="p-2">Succ</th>
+                      <th className="p-2">Replays</th>
+                      <th className="p-2">Spread</th>
+                      <th className="p-2">État</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewRows.map((r) => (
+                      <tr
+                        key={r.rowIndex}
+                        className={
+                          r.errors.length
+                            ? "bg-destructive/5 border-t"
+                            : r.warnings.length
+                              ? "bg-amber-500/5 border-t"
+                              : "border-t"
+                        }
+                      >
+                        <td className="p-2 text-muted-foreground">{r.rowIndex}</td>
+                        <td className="p-2 font-medium">{r.parsed.name || <span className="text-destructive">—</span>}</td>
+                        <td className="p-2">{r.parsed.failures}</td>
+                        <td className="p-2">{r.parsed.successes}</td>
+                        <td className="p-2">{r.parsed.replays}</td>
+                        <td className="p-2">{r.parsed.spread_minutes}</td>
+                        <td className="p-2">
+                          {r.errors.length > 0 && (
+                            <div className="text-destructive">
+                              {r.errors.join(" · ")}
+                            </div>
+                          )}
+                          {r.warnings.length > 0 && (
+                            <div className="text-amber-600">
+                              {r.warnings.join(" · ")}
+                            </div>
+                          )}
+                          {r.errors.length === 0 && r.warnings.length === 0 && (
+                            <span className="text-green-600">ok</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPreviewOpen(false)}
+              disabled={busy}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={confirmImport}
+              disabled={
+                busy ||
+                !!previewFatal ||
+                previewRows.filter((r) => r.errors.length === 0).length === 0
+              }
+            >
+              Importer {previewRows.filter((r) => r.errors.length === 0).length} preset(s)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
