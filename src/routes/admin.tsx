@@ -1404,6 +1404,25 @@ function SandboxControls({
             <Button onClick={runClear} disabled={busy} size="sm" variant="outline">
               Nettoyer les données sandbox
             </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,.csv,application/json,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleImportFile(file);
+              }}
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={busy}
+              size="sm"
+              variant="outline"
+              title="Importer des presets depuis un fichier JSON ou CSV (colonnes: name, failures, successes, replays, spread_minutes)"
+            >
+              Importer presets (JSON/CSV)
+            </Button>
             <div className="flex gap-1 items-center ml-auto">
               <Input
                 placeholder="Nom du preset"
