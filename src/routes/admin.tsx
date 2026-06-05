@@ -1185,8 +1185,93 @@ function SandboxControls({
     });
   };
 
+  type PreviewRow = {
+    rowIndex: number;
+    original: Record<string, unknown>;
+    parsed: {
+      name: string;
+      failures: number;
+      successes: number;
+      replays: number;
+      spread_minutes: number;
+    };
+    warnings: string[];
+    errors: string[];
+  };
+
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
+  const [previewFileName, setPreviewFileName] = useState("");
+  const [previewFatal, setPreviewFatal] = useState<string | null>(null);
+
+  const numericFields: Array<{
+    key: "failures" | "successes" | "replays" | "spread_minutes";
+    max: number;
+  }> = [
+    { key: "failures", max: 500 },
+    { key: "successes", max: 500 },
+    { key: "replays", max: 500 },
+    { key: "spread_minutes", max: 180 },
+  ];
+
+  const buildPreviewRow = (
+    raw: Record<string, unknown>,
+    rowIndex: number,
+  ): PreviewRow => {
+    const warnings: string[] = [];
+    const errors: string[] = [];
+
+    const rawName = String(raw.name ?? "").trim();
+    if (!rawName) errors.push("nom manquant");
+    let name = rawName;
+    if (name.length > 60) {
+      warnings.push(`nom tronqué à 60 caractères`);
+      name = name.slice(0, 60);
+    }
+
+    const parsedNums: Record<string, number> = {};
+    for (const { key, max } of numericFields) {
+      const original = raw[key];
+      const num = Math.floor(Number(original));
+      if (original === undefined || original === null || original === "") {
+        parsedNums[key] = 0;
+      } else if (!Number.isFinite(num)) {
+        errors.push(`${key}: valeur non numérique`);
+        parsedNums[key] = 0;
+      } else {
+        let v = num;
+        if (v < 0) {
+          warnings.push(`${key}: négatif, ramené à 0`);
+          v = 0;
+        }
+        if (v > max) {
+          warnings.push(`${key}: ${v} clampé à ${max}`);
+          v = max;
+        }
+        parsedNums[key] = v;
+      }
+    }
+
+    return {
+      rowIndex,
+      original: raw,
+      parsed: {
+        name,
+        failures: parsedNums.failures,
+        successes: parsedNums.successes,
+        replays: parsedNums.replays,
+        spread_minutes: parsedNums.spread_minutes,
+      },
+      warnings,
+      errors,
+    };
+  };
+
   const handleImportFile = async (file: File) => {
-    setBusy(true);
+    setPreviewFileName(file.name);
+    setPreviewFatal(null);
+    setPreviewRows([]);
+    setPreviewOpen(true);
     try {
       const text = await file.text();
       let raw: Array<Record<string, unknown>> = [];
@@ -1207,24 +1292,46 @@ function SandboxControls({
       } else {
         raw = parseCSV(text) as unknown as Array<Record<string, unknown>>;
       }
+      if (raw.length === 0) throw new Error("Fichier vide");
 
-      const items = raw
-        .map((p) => ({
-          name: String(p.name ?? "").trim().slice(0, 60),
-          failures: clamp(p.failures, 500),
-          successes: clamp(p.successes, 500),
-          replays: clamp(p.replays, 500),
-          spread_minutes: clamp(p.spread_minutes, 180),
-        }))
-        .filter((p) => p.name.length > 0);
+      const rows = raw.map((r, i) => buildPreviewRow(r, i + 1));
 
-      if (items.length === 0) throw new Error("Aucun preset valide trouvé");
+      // Detect duplicate names within file
+      const seen = new Map<string, number[]>();
+      rows.forEach((r) => {
+        if (!r.parsed.name) return;
+        const arr = seen.get(r.parsed.name) ?? [];
+        arr.push(r.rowIndex);
+        seen.set(r.parsed.name, arr);
+      });
+      rows.forEach((r) => {
+        const idxs = seen.get(r.parsed.name);
+        if (idxs && idxs.length > 1) {
+          r.warnings.push(`doublon de nom (lignes ${idxs.join(", ")})`);
+        }
+      });
 
+      setPreviewRows(rows);
+    } catch (e) {
+      setPreviewFatal((e as Error).message);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const confirmImport = async () => {
+    const valid = previewRows.filter((r) => r.errors.length === 0);
+    if (valid.length === 0) {
+      toast.error("Aucune ligne valide à importer");
+      return;
+    }
+    setBusy(true);
+    try {
       let ok = 0;
       let ko = 0;
-      for (const it of items) {
+      for (const r of valid) {
         try {
-          await savePreset({ data: it });
+          await savePreset({ data: r.parsed });
           ok++;
         } catch {
           ko++;
@@ -1234,11 +1341,10 @@ function SandboxControls({
         `Import: ${ok} preset(s) chargé(s)${ko ? `, ${ko} échec(s)` : ""}`,
       );
       void refreshPresets();
-    } catch (e) {
-      toast.error(`Import échoué: ${(e as Error).message}`);
+      setPreviewOpen(false);
+      setPreviewRows([]);
     } finally {
       setBusy(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
