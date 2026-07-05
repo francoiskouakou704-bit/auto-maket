@@ -4,7 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap');
 
 @theme inline {
   --font-sans: 'Manrope', system-ui, sans-serif;
