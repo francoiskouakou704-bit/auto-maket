@@ -25,7 +25,7 @@ export default defineTool({
       .from("vehicles")
       .select("*")
       .eq("id", id)
-      .eq("status", "active")
+      .eq("status", "published")
       .maybeSingle();
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     if (!data) return { content: [{ type: "text", text: "Vehicle not found or inactive." }], isError: true };

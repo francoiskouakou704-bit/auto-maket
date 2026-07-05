@@ -24,7 +24,7 @@ export default defineTool({
     max_price: z.number().int().min(0).optional(),
     min_year: z.number().int().min(1950).max(2030).optional(),
     max_year: z.number().int().min(1950).max(2030).optional(),
-    fuel: z.enum(["gasoline", "diesel", "hybrid", "electric", "lpg", "cng", "other"]).optional(),
+    fuel: z.enum(["gasoline", "diesel", "hybrid", "electric", "lpg", "other"]).optional(),
     limit: z.number().int().min(1).max(50).default(20),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
@@ -33,7 +33,7 @@ export default defineTool({
     let q = sb
       .from("vehicles")
       .select("id, title, brand, model, year, price, currency, mileage, fuel, transmission, city, country")
-      .eq("status", "active")
+      .eq("status", "published")
       .order("created_at", { ascending: false })
       .limit(input.limit);
 
