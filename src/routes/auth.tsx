@@ -12,15 +12,24 @@ import { lovable } from "@/integrations/lovable";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Connexion — AutoMarket" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : undefined,
+  }),
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function goNext() {
+    if (next) window.location.href = next;
+    else navigate({ to: "/dashboard" });
+  }
 
   async function signIn() {
     setLoading(true);
@@ -28,23 +37,25 @@ function AuthPage() {
     setLoading(false);
     if (error) return toast.error(error.message);
     toast.success("Connecté !");
-    navigate({ to: "/dashboard" });
+    goNext();
   }
 
   async function signUp() {
     setLoading(true);
+    const redirectBack = next ? `${window.location.origin}${next}` : window.location.origin;
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { full_name: name }, emailRedirectTo: window.location.origin },
+      options: { data: { full_name: name }, emailRedirectTo: redirectBack },
     });
     setLoading(false);
     if (error) return toast.error(error.message);
     toast.success("Compte créé !");
-    navigate({ to: "/dashboard" });
+    goNext();
   }
 
   async function google() {
-    const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+    const redirectBack = next ? `${window.location.origin}${next}` : window.location.origin;
+    const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: redirectBack });
     if (res.error) toast.error("Erreur Google");
   }
 

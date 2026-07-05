@@ -3,12 +3,16 @@
   "sdk_version": "0.20.0",
   "path": "/mcp",
   "auth": {
-    "type": "none"
+    "type": "oauth",
+    "issuer": "https://msirvlbrtbxgesfwjxac.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
   },
   "mcp": {
     "server": {
       "name": "auto-market-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Auto Market MCP"
     },
     "tools": [
@@ -155,6 +159,49 @@
             "brand",
             "model",
             "year"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_listing_status",
+        "title": "Update listing status",
+        "description": "Update the status of one of your own vehicle listings after validation. Typical use: promote a draft to published once the ad is ready. Also supports archiving, marking as sold, or reverting to draft. Only the listing's owner (the authenticated user) can call this.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "vehicle_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Id of the vehicle to update (must belong to the caller)."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "archived",
+                "sold"
+              ],
+              "description": "New status."
+            },
+            "skip_validation": {
+              "default": false,
+              "description": "If true, skip the publish-readiness field checks. Not recommended.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "vehicle_id",
+            "status"
           ]
         },
         "outputSchema": null
