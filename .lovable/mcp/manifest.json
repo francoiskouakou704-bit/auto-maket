@@ -1,0 +1,164 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "auto-market-mcp",
+      "version": "0.1.0",
+      "title": "Auto Market MCP"
+    },
+    "tools": [
+      {
+        "name": "search_vehicles",
+        "title": "Search vehicles",
+        "description": "Search the public vehicle marketplace by brand, model, price range, year range, fuel, or full-text query. Returns a compact list of matching listings.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "query": {
+              "description": "Free-text search on title/description",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "brand": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "min_price": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "max_price": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "min_year": {
+              "type": "integer",
+              "minimum": 1950,
+              "maximum": 2030
+            },
+            "max_year": {
+              "type": "integer",
+              "minimum": 1950,
+              "maximum": 2030
+            },
+            "fuel": {
+              "type": "string",
+              "enum": [
+                "gasoline",
+                "diesel",
+                "hybrid",
+                "electric",
+                "lpg",
+                "other"
+              ]
+            },
+            "limit": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_vehicle",
+        "title": "Get vehicle details",
+        "description": "Fetch the full detail of a single active vehicle listing by its id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Vehicle id (UUID) as returned by search_vehicles"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "estimate_listing",
+        "title": "Estimate a vehicle listing",
+        "description": "Generate an AI-crafted sales listing (title, description, selling points, estimated market price in EUR) for a given vehicle.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "brand": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "year": {
+              "type": "integer",
+              "minimum": 1950,
+              "maximum": 2030
+            },
+            "mileage": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2000000
+            },
+            "fuel": {
+              "type": "string"
+            },
+            "transmission": {
+              "type": "string"
+            },
+            "extra": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "brand",
+            "model",
+            "year"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
