@@ -6,7 +6,7 @@ import { z } from "zod";
 
 const int = (max: number) =>
   z
-    .number({ invalid_type_error: "doit être un entier" })
+    .number({ error: (iss) => (iss.input === undefined ? "doit être un entier" : "doit être un entier") })
     .int("doit être un entier")
     .finite()
     .min(0)
